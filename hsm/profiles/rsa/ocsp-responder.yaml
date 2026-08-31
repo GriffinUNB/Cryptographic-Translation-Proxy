@@ -1,0 +1,155 @@
+# =============================================================================
+# RSA OCSP Responder Certificate Profile
+# =============================================================================
+#
+# Usage: Certificate for OCSP responder service (RFC 6960)
+#
+# This certificate allows the OCSP responder to:
+#   - Sign OCSP responses (real-time certificate status)
+#   - Operate as a delegated responder for the issuing CA
+#   - Provide faster revocation checking than CRL download
+#
+# Standards: RFC 6960 (OCSP), RFC 5280 (X.509)
+#
+# Security Level: ~112-bit (RSA-2048)
+#
+# Quantum Safety: VULNERABLE
+#   RSA is vulnerable to Cryptographically Relevant Quantum Computers (CRQC).
+#   For quantum-resistant OCSP, use ml/ocsp-responder.
+#
+# Delegated Responder: This certificate is signed by the issuing CA.
+#   The CA delegates OCSP signing authority to this responder.
+#   RFC 6960 Section 4.2.2.2 defines the delegation mechanism.
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile rsa/ocsp-responder \
+#       --var cn="ACME OCSP Responder"
+#
+#   # Using --var-file
+#   pki credential enroll --profile rsa/ocsp-responder --var-file ocsp-vars.yaml
+#
+# Expected DN: CN=ACME OCSP Responder, OU=PKI Services, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: rsa/ocsp-responder
+description: "OCSP Responder certificate RSA-2048 (RFC 6960)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+# Input variables with validation constraints.
+# Use: pki credential enroll --profile rsa/ocsp-responder --var cn="My OCSP"
+#
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - OCSP service name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# RSA-2048 for OCSP responders.
+#
+algorithm: rsa-2048
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 365 days for OCSP responder certificates.
+# Shorter validity limits exposure if responder key is compromised.
+#
+validity: 365d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "PKI Services"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # digitalSignature: Required for signing OCSP responses
+  #
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  # ocspSigning (OID 1.3.6.1.5.5.7.3.9): RFC 6960 OCSP signing
+  # CRITICAL: Restricts certificate to OCSP signing only
+  #
+  extKeyUsage:
+    critical: true            # Critical to prevent misuse
+    values:
+      - ocspSigning
+
+  # OCSP No Check (RFC 6960 Section 4.2.2.2.1)
+  # ---------------------------------------------------------------------------
+  # This extension indicates that OCSP clients should NOT check
+  # the revocation status of this OCSP responder certificate.
+  # Required for delegated responders to avoid infinite recursion.
+  #
+  ocspNoCheck:
+    critical: false
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.6.1"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  # Note: No OCSP URL for OCSP responder cert (see ocspNoCheck above)
+  #
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca.crt"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# Defaults: scheme=rsassa-pkcs1v15, hash=sha256

@@ -1,0 +1,166 @@
+# =============================================================================
+# eIDAS Qualified Electronic Signature Certificate Profile
+# =============================================================================
+#
+# Usage: Qualified certificate for electronic signatures (natural persons)
+#
+# This certificate allows the holder to:
+#   - Create qualified electronic signatures (QES)
+#   - Sign documents with legal equivalence to handwritten signatures
+#   - Provide non-repudiation for legal transactions
+#
+# Standards: eIDAS Regulation (EU 910/2014), ETSI EN 319 412-5
+#
+# QCStatements included:
+#   - QcCompliance (0.4.0.1862.1.1): EU qualified certificate
+#   - QcType (0.4.0.1862.1.6.1): Electronic signature (esign)
+#   - QcSSCD (0.4.0.1862.1.4): Private key on Qualified Signature Creation Device
+#   - QcRetentionPeriod (0.4.0.1862.1.3): Document retention period
+#   - QcPDS (0.4.0.1862.1.5): PKI Disclosure Statements location
+#
+# Security Level: ~128-bit (ECDSA P-256)
+#
+# Quantum Safety: VULNERABLE
+#   ECDSA is vulnerable to Cryptographically Relevant Quantum Computers (CRQC).
+#   For quantum-resistant qualified signatures, use ml-dsa based profiles.
+#
+# Examples:
+#
+#   # Create qualified signature certificate
+#   pki credential enroll --profile eidas/qc-esign \
+#       --var cn="Jean Dupont" \
+#       --var serialNumber="PASSFR-123456789" \
+#       --var country="FR" \
+#       --var pds_url="https://pki.example.com/pds-en.pdf" \
+#       --var pds_lang="en"
+#
+# Expected DN: CN=Jean Dupont, SERIALNUMBER=PASSFR-123456789, C=FR
+#
+# =============================================================================
+
+name: eidas/qc-esign
+description: "eIDAS Qualified Electronic Signature Certificate (Natural Person)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - Full legal name of the natural person"
+
+  serialNumber:
+    type: string
+    required: true
+    description: "Subject serial number - Unique identifier (e.g., PASSFR-123456789)"
+
+  organization:
+    type: string
+    required: false
+    description: "Organization name (if applicable)"
+
+  country:
+    type: string
+    required: true
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# ECDSA P-256 for qualified signatures.
+# Note: Key must be generated on a Qualified Signature Creation Device (QSCD).
+#
+algorithm: ecdsa-p256
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 2 years (730 days) for qualified signature certificates.
+# eIDAS requires regular renewal and validation.
+#
+validity: 730d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+# eIDAS requires specific subject attributes for natural persons.
+#
+subject:
+  cn: "{{ cn }}"
+  serialNumber: "{{ serialNumber }}"
+  o: "{{ organization }}"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # digitalSignature: Required for creating signatures
+  # nonRepudiation:   Required for qualified signatures (legal evidence)
+  #
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+      - nonRepudiation
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  # emailProtection: Allows signing emails (S/MIME)
+  # Optional for general document signing.
+  #
+  extKeyUsage:
+    critical: false
+    values:
+      - emailProtection
+
+  # QCStatements (ETSI EN 319 412-5)
+  # ---------------------------------------------------------------------------
+  # Qualifies this as an eIDAS compliant certificate.
+  # NOTE: Customize qcPDS URLs for your organization before use.
+  #
+  qcStatements:
+    critical: false
+    qcCompliance: true            # EU qualified certificate
+    qcType: esign                 # Electronic signature (natural person)
+    qcSSCD: true                  # Private key on QSCD
+    qcRetentionPeriod: 15         # 15 years retention
+    qcPDS:                        # CUSTOMIZE: Update with your PDS URLs
+      - url: "https://pki.example.com/pds-en.pdf"
+        language: "en"
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "0.4.0.2042.1.1"     # ETSI QCP-n-qscd policy OID
+        cps: "https://pki.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.example.com/qca.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.example.com/certs/qca.crt"
+    ocsp:
+      - "http://ocsp.example.com"

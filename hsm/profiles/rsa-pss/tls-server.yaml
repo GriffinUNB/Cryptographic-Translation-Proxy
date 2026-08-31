@@ -1,0 +1,177 @@
+# =============================================================================
+# RSA-PSS TLS Server Certificate Profile
+# =============================================================================
+#
+# Usage: TLS server authentication with RSA-PSS signatures
+#
+# This certificate allows a server to:
+#   - Authenticate using RSA-PSS (RSASSA-PSS) signatures
+#   - Meet TLS 1.3 requirements for RSA signatures
+#   - Work with modern TLS implementations
+#
+# RSA-PSS vs RSA PKCS#1 v1.5:
+#   - RSA-PSS uses probabilistic padding (more secure)
+#   - RSA-PSS is mandatory for TLS 1.3 RSA signatures
+#   - RSA-PSS has provable security reduction to RSA problem
+#   - PKCS#1 v1.5 has known padding oracle vulnerabilities
+#
+# Standards: RFC 8017 (RSASSA-PSS), RFC 8446 (TLS 1.3), RFC 5280 (X.509)
+#
+# Security Level: ~128-bit (RSA-4096)
+#   RSA-4096 provides stronger classical security than RSA-2048.
+#
+# Quantum Safety: VULNERABLE
+#   RSA-PSS is vulnerable to Cryptographically Relevant Quantum Computers (CRQC).
+#   For quantum resistance, use:
+#   - hybrid/catalyst/tls-server (backward compatible + PQC)
+#   - ml/tls-server-sign (pure post-quantum)
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile rsa-pss/tls-server \
+#       --var cn="www.acme.example.com" \
+#       --var dns_names="www.acme.example.com,api.acme.example.com"
+#
+#   # Using --var-file
+#   pki credential enroll --profile rsa-pss/tls-server --var-file server-vars.yaml
+#
+# Expected DN: CN=www.acme.example.com, OU=Servers, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: rsa-pss/tls-server
+description: "TLS server RSA-PSS 4096-bit with SHA-256"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: dns_name
+    required: true
+    wildcard:
+      allowed: true
+    description: "Common Name - Server's primary FQDN (wildcards allowed)"
+
+  dns_names:
+    type: dns_names
+    required: false
+    default: []
+    wildcard:
+      allowed: true
+    description: "DNS Subject Alternative Names (wildcards allowed)"
+
+  ip_addresses:
+    type: ip_list
+    required: false
+    default: []
+    description: "IP Address Subject Alternative Names"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# RSA-4096 with PSS padding.
+#   - Stronger than RSA-2048 (~112-bit)
+#   - Better security margin for long-term certificates
+#   - Slightly larger signatures than ECDSA
+#
+algorithm: rsa-4096
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 365 days for TLS server certificates.
+# CA/Browser Forum Baseline Requirements limit public certs to 398 days.
+#
+validity: 365d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "Servers"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # digitalSignature: TLS 1.3 handshake (RSA-PSS signatures)
+  # keyEncipherment: TLS 1.2 RSA key exchange (legacy compatibility)
+  #
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+      - keyEncipherment
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  extKeyUsage:
+    critical: false
+    values:
+      - serverAuth
+
+  # Subject Alternative Name (RFC 5280 Section 4.2.1.6)
+  # ---------------------------------------------------------------------------
+  # Browsers require DNS names in SAN (CN is deprecated for server identity).
+  #
+  subjectAltName:
+    critical: false
+    dns: "{{ dns_names }}"
+    ip: "{{ ip_addresses }}"
+    dns_include_cn: true
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.2.1"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# Defaults: scheme=rsassa-pss, hash=sha256

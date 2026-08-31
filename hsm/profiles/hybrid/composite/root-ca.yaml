@@ -1,0 +1,147 @@
+# =============================================================================
+# Hybrid Composite Root CA Certificate Profile (IETF Format)
+# =============================================================================
+#
+# Usage: Root CA (trust anchor) with IETF composite hybrid signatures
+#
+# This certificate provides:
+#   - Protection against quantum computer attacks
+#   - Strict security: BOTH signatures must validate
+#   - IETF standardized format (draft-ietf-lamps-pq-composite-sigs-13 (DRAFT))
+#
+# Standards: IETF draft-ietf-lamps-pq-composite-sigs-13 (DRAFT), RFC 5280 (X.509)
+#
+# Security Level:
+#   - Classical: ~256-bit (ECDSA P-521)
+#   - PQC: NIST Level 5 (~256-bit equivalent, ML-DSA-87)
+#
+# Quantum Safety: PROTECTED (Composite Hybrid)
+#   Both signatures MUST validate for certificate to be trusted.
+#   Requires verifier to support composite signature format.
+#
+# Composite Mode vs Catalyst Mode:
+#   - Composite: BOTH signatures required (IETF format)
+#   - Catalyst: Classical primary, PQC in extension (ITU-T X.509)
+#   Composite is stricter but requires full PQC-aware software.
+#   For backward compatibility, use hybrid/catalyst/root-ca instead.
+#
+# IETF Composite Format (draft-ietf-lamps-pq-composite-sigs-13 (DRAFT)):
+#   - Single composite public key (contains both keys)
+#   - Single composite signature (contains both signatures)
+#   - OID identifies the specific algorithm combination
+#   - Verifier MUST check BOTH signatures
+#
+# Compatibility Warning:
+#   Composite certificates require composite-aware verifiers.
+#   Not compatible with standard PKI software.
+#   For broad compatibility, use hybrid/catalyst/ profiles.
+#
+# Examples:
+#
+#   # Using --var
+#   pki ca init --profile hybrid/composite/root-ca --ca-dir ./root-ca-composite \
+#       --var cn="ACME Root CA Composite"
+#
+#   # Using --var-file
+#   pki ca init --profile hybrid/composite/root-ca --ca-dir ./root-ca-composite --var-file ca-vars.yaml
+#
+# Expected DN: CN=ACME Root CA Composite, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: hybrid/composite/root-ca
+description: "Root CA hybrid composite ECDSA P-521 + ML-DSA-87 (IETF format)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - Root CA name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithms
+# -----------------------------------------------------------------------------
+# ECDSA P-521 + ML-DSA-87 for maximum security on both fronts.
+# This is the only IANA-allocated OID for ML-DSA-87 composite signatures.
+#   - ECDSA P-521: ~256-bit classical security
+#   - ML-DSA-87: NIST Level 5 PQC security
+#
+algorithms:
+  - ecdsa-p521              # Classical: ~256-bit security
+  - ml-dsa-87               # PQC: NIST Level 5
+
+# -----------------------------------------------------------------------------
+# Hybrid Mode: Composite (IETF)
+# -----------------------------------------------------------------------------
+# Composite mode creates a single certificate with combined algorithms.
+# Both algorithms are cryptographically bound together.
+#
+mode: composite
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 20 years for Root CA.
+#
+validity: 7300d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: true
+    pathLen: 1
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  keyUsage:
+    critical: true
+    values:
+      - keyCertSign
+      - cRLSign
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "2.5.29.32.0"
+        cps: "https://pki.acme.example.com/cps"
+        userNotice: "ACME Corp Root CA - Hybrid Composite (IETF format)"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# Composite signature: ecdsa(sha384) + ML-DSA combined
+# Both signatures must validate for the certificate to be trusted.

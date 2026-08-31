@@ -1,0 +1,165 @@
+# =============================================================================
+# Hybrid Composite Timestamping Certificate Profile (IETF Format)
+# =============================================================================
+#
+# Usage: RFC 3161 Timestamping Authority with IETF composite signatures
+#
+# This certificate allows the TSA to:
+#   - Issue trusted timestamps with composite hybrid signatures
+#   - Require BOTH signature validations for timestamp verification
+#   - Provide maximum long-term cryptographic assurance
+#
+# Standards: IETF draft-ietf-lamps-pq-composite-sigs-13 (DRAFT), RFC 3161, RFC 5280
+#
+# Security Level:
+#   - Classical: ~256-bit (ECDSA P-521)
+#   - PQC: NIST Level 5 (~256-bit equivalent, ML-DSA-87)
+#
+# Quantum Safety: PROTECTED (Composite Hybrid)
+#   Both signatures MUST validate for timestamp to be trusted.
+#   Critical for timestamps that must remain valid for decades.
+#
+# Why Composite for Timestamping:
+#   Timestamps are often verified many years after issuance.
+#   Composite signatures ensure that even if one algorithm is broken,
+#   both must be compromised to forge a timestamp.
+#   This provides defense-in-depth for long-term archival.
+#
+# Important: Timestamping certificates MUST have:
+#   - extKeyUsage: timeStamping ONLY (no other EKUs)
+#   - extKeyUsage: CRITICAL (per RFC 3161 Section 2.3)
+#
+# Compatibility Warning:
+#   Composite timestamps require composite-aware verifiers.
+#   For backward compatibility, use ec/timestamping instead.
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile hybrid/composite/timestamping \
+#       --var cn="ACME TSA Composite"
+#
+#   # Using --var-file
+#   pki credential enroll --profile hybrid/composite/timestamping --var-file tsa-vars.yaml
+#
+# Expected DN: CN=ACME TSA Composite, OU=PKI Services, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: hybrid/composite/timestamping
+description: "Timestamping certificate hybrid composite ECDSA P-521 + ML-DSA-87 (IETF format)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - TSA service name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithms
+# -----------------------------------------------------------------------------
+# ECDSA P-521 for stronger classical security (important for TSA).
+# ML-DSA-87 for NIST Level 5 PQC security.
+# Note: IETF composite requires P-521 + ML-DSA-87 pairing.
+#
+algorithms:
+  - ecdsa-p521              # Classical: ~256-bit security
+  - ml-dsa-87               # PQC: NIST Level 5
+
+# -----------------------------------------------------------------------------
+# Hybrid Mode: Composite (IETF)
+# -----------------------------------------------------------------------------
+mode: composite
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 3 years (1095 days) for TSA certificates.
+#
+validity: 1095d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "PKI Services"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # digitalSignature: Required for signing timestamp tokens
+  #
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  # timeStamping: RFC 3161 timestamping
+  # CRITICAL: RFC 3161 Section 2.3 requires this to be critical
+  # EXCLUSIVE: No other EKUs allowed per RFC 3161
+  #
+  extKeyUsage:
+    critical: true            # MUST be critical per RFC 3161
+    values:
+      - timeStamping          # ONLY timeStamping allowed
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.5.5"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca-composite.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca-composite.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# Composite signature: ecdsa(sha512) + ML-DSA-87 combined
+# Both signatures must validate for the certificate to be trusted.

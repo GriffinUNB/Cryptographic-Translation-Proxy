@@ -1,0 +1,176 @@
+# =============================================================================
+# Hybrid Catalyst TLS Server Certificate Profile (ECDSA P-256 + ML-DSA-65)
+# =============================================================================
+#
+# Usage: TLS server certificate with quantum-safe protection
+#
+# This certificate allows a server to:
+#   - Authenticate to classical TLS clients (ECDSA)
+#   - Authenticate to PQC-aware TLS clients (ECDSA + ML-DSA)
+#   - Protect against "harvest now, decrypt later" attacks
+#
+# Standards: ITU-T X.509 Section 9.8, RFC 8446 (TLS 1.3), FIPS 204 (ML-DSA)
+#
+# Security Level:
+#   - Classical: ~128-bit (ECDSA P-256)
+#   - PQC: NIST Level 3 (ML-DSA-65)
+#
+# Quantum Safety: PROTECTED (Hybrid)
+#   Classical clients verify ECDSA signature (backward compatible).
+#   PQC-aware clients verify BOTH signatures for quantum resistance.
+#
+# TLS Compatibility:
+#   - All existing TLS clients work (they ignore the ML-DSA extension)
+#   - Future PQC-TLS clients can verify the ML-DSA signature
+#   - No protocol changes required for deployment
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile hybrid/catalyst/tls-server \
+#       --var cn="api.acme.example.com" \
+#       --var dns_names="api.acme.example.com,api-v2.acme.example.com"
+#
+#   # Using --var-file
+#   pki credential enroll --profile hybrid/catalyst/tls-server --var-file server-vars.yaml
+#
+# Expected DN: CN=api.acme.example.com, OU=Servers, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: hybrid/catalyst/tls-server
+description: "TLS server hybrid ECDSA P-256 + ML-DSA-65 (PQC transition)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: dns_name
+    required: true
+    wildcard:
+      allowed: true
+    description: "Common Name - Server's primary FQDN"
+
+  dns_names:
+    type: dns_names
+    required: false
+    default: []
+    wildcard:
+      allowed: true
+    description: "DNS Subject Alternative Names (wildcards allowed)"
+
+  ip_addresses:
+    type: ip_list
+    required: false
+    default: []
+    description: "IP Address Subject Alternative Names"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithms
+# -----------------------------------------------------------------------------
+algorithms:
+  - ecdsa-p256              # Classical: TLS 1.3 compatible
+  - ml-dsa-65               # PQC: NIST Level 3
+
+# -----------------------------------------------------------------------------
+# Hybrid Mode: Catalyst (ITU-T X.509 Section 9.8)
+# -----------------------------------------------------------------------------
+# Single certificate with dual signatures:
+#   - Standard X.509 signature: ECDSA P-256
+#   - Alternative signature: ML-DSA-65 (in extension)
+#
+mode: catalyst
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 365 days per CA/Browser Forum Baseline Requirements.
+#
+validity: 365d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "Servers"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature      # TLS 1.3 authentication
+      - keyEncipherment       # TLS 1.2 compatibility
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  extKeyUsage:
+    critical: false
+    values:
+      - serverAuth
+
+  # Subject Alternative Name (RFC 5280 Section 4.2.1.6)
+  # ---------------------------------------------------------------------------
+  subjectAltName:
+    critical: false
+    dns: "{{ dns_names }}"
+    ip: "{{ ip_addresses }}"
+    dns_include_cn: true
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.2.4"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca-hybrid.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca-hybrid.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# Dual signatures: ecdsa(sha384) + ML-DSA (intrinsic)
+# Classical clients verify ECDSA, PQC-aware clients verify both.

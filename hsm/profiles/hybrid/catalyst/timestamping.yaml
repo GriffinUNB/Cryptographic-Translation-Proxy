@@ -1,0 +1,151 @@
+# =============================================================================
+# Hybrid Catalyst Timestamping Certificate Profile (ECDSA P-384 + ML-DSA-65)
+# =============================================================================
+#
+# Usage: RFC 3161 Timestamping Authority with quantum-safe protection
+#
+# This certificate allows the TSA to:
+#   - Issue timestamps verifiable by classical clients (ECDSA)
+#   - Issue timestamps verifiable by PQC-aware clients (both signatures)
+#   - Provide long-term timestamp validity against quantum attacks
+#
+# Standards: RFC 3161 (TSA), ITU-T X.509 Section 9.8 (Catalyst), FIPS 204
+#
+# Security Level:
+#   - Classical: ~192-bit (ECDSA P-384)
+#   - PQC: NIST Level 3 (ML-DSA-65)
+#
+# Quantum Safety: PROTECTED (Hybrid)
+#   Critical for timestamps that must remain valid for decades.
+#   Quantum computers could forge timestamps if only classical crypto used.
+#
+# Long-term Validity:
+#   Timestamps often need to be verifiable 10-30+ years after issuance.
+#   Hybrid approach protects against future quantum threats.
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile hybrid/catalyst/timestamping \
+#       --var cn="ACME Hybrid TSA"
+#
+#   # Using --var-file
+#   pki credential enroll --profile hybrid/catalyst/timestamping --var-file tsa-vars.yaml
+#
+# Expected DN: CN=ACME Hybrid TSA, OU=PKI Services, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: hybrid/catalyst/timestamping
+description: "Timestamping certificate hybrid ECDSA P-384 + ML-DSA-65 (PQC transition)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - TSA service name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithms
+# -----------------------------------------------------------------------------
+# P-384 + ML-DSA-65 for stronger TSA protection:
+#   - P-384: Stronger classical security for long-lived timestamps
+#   - ML-DSA-65: Quantum resistance for future-proofing
+#
+algorithms:
+  - ecdsa-p384              # Classical: ~192-bit security
+  - ml-dsa-65               # PQC: NIST Level 3
+
+# -----------------------------------------------------------------------------
+# Hybrid Mode: Catalyst
+# -----------------------------------------------------------------------------
+mode: catalyst
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 3 years for TSA certificates.
+#
+validity: 1095d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "PKI Services"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  # CRITICAL and EXCLUSIVE per RFC 3161
+  #
+  extKeyUsage:
+    critical: true
+    values:
+      - timeStamping
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.5.4"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca-hybrid.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca-hybrid.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# Dual signatures: ecdsa(sha384) + ML-DSA (intrinsic)
+# Classical clients verify ECDSA, PQC-aware clients verify both.

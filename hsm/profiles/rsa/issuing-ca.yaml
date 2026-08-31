@@ -1,0 +1,116 @@
+# =============================================================================
+# RSA Issuing CA Certificate Profile
+# =============================================================================
+#
+# Usage: Intermediate CA with RSA
+#
+# This certificate allows the Issuing CA to:
+#   - Issue end-entity certificates compatible with all systems
+#   - Sign CRLs readable by all applications
+#   - Support all TLS implementations
+#
+# Standards: RFC 5280 (X.509), NIST SP 800-57
+#
+# Security Level: ~112-bit (RSA-4096)
+#
+# Quantum Safety: VULNERABLE
+#   RSA is vulnerable to Cryptographically Relevant Quantum Computers (CRQC).
+#   For quantum-resistant Issuing CA, use hybrid/catalyst/issuing-ca.
+#
+# Examples:
+#
+#   # Using --var
+#   pki ca init --profile rsa/issuing-ca --ca-dir ./issuing-ca-rsa \
+#       --var cn="ACME Issuing CA RSA" \
+#       --parent ./root-ca-rsa
+#
+#   # Using --var-file
+#   pki ca init --profile rsa/issuing-ca --ca-dir ./issuing-ca-rsa --var-file ca-vars.yaml --parent ./root-ca-rsa
+#
+# Expected DN: CN=ACME Issuing CA RSA, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: rsa/issuing-ca
+description: "Issuing CA RSA 4096-bit"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - Issuing CA name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+algorithm: rsa-4096
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+validity: 3650d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  basicConstraints:
+    critical: true
+    ca: true
+    pathLen: 0
+
+  keyUsage:
+    critical: true
+    values:
+      - keyCertSign
+      - cRLSign
+
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.0.1"
+        cps: "https://pki.acme.example.com/cps"
+
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/root-ca-rsa.crl"
+
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/root-ca-rsa.crt"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# Defaults: scheme=rsassa-pss, hash=sha256
+# For legacy compatibility, override with:
+#   signature:
+#     scheme: pkcs1v15
+#     hash: sha256

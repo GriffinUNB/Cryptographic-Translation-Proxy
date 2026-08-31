@@ -1,0 +1,168 @@
+# =============================================================================
+# Hybrid Composite OCSP Responder Certificate Profile (IETF Format)
+# =============================================================================
+#
+# Usage: OCSP responder with IETF composite hybrid signatures (RFC 6960)
+#
+# This certificate allows the OCSP responder to:
+#   - Sign OCSP responses with composite hybrid signatures
+#   - Require BOTH signature validations for response verification
+#   - Provide maximum cryptographic assurance for revocation status
+#
+# Standards: IETF draft-ietf-lamps-pq-composite-sigs-13 (DRAFT), RFC 6960, RFC 5280
+#
+# Security Level:
+#   - Classical: ~256-bit (ECDSA P-521)
+#   - PQC: NIST Level 5 (~256-bit equivalent, ML-DSA-87)
+#
+# Quantum Safety: PROTECTED (Composite Hybrid)
+#   Both signatures MUST validate for OCSP response to be trusted.
+#   Defense-in-depth: even if one algorithm is broken, both must be
+#   compromised to forge an OCSP response.
+#
+# Why Composite for OCSP:
+#   OCSP responses must be trustworthy even against future quantum attacks.
+#   A forged OCSP response could make a revoked certificate appear valid.
+#   Composite signatures provide defense-in-depth for this critical service.
+#
+# Delegated Responder (RFC 6960 Section 4.2.2.2):
+#   This certificate is signed by the issuing CA.
+#   The CA delegates OCSP signing authority to this responder.
+#   The ocspNoCheck extension prevents infinite recursion.
+#
+# Compatibility Warning:
+#   Composite OCSP responses require composite-aware verifiers.
+#   For backward compatibility, use ec/ocsp-responder instead.
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile hybrid/composite/ocsp-responder \
+#       --var cn="ACME Composite OCSP"
+#
+#   # Using --var-file
+#   pki credential enroll --profile hybrid/composite/ocsp-responder --var-file ocsp-vars.yaml
+#
+# Expected DN: CN=ACME Composite OCSP, OU=PKI Services, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: hybrid/composite/ocsp-responder
+description: "OCSP Responder hybrid composite ECDSA P-521 + ML-DSA-87 (IETF format)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - OCSP service name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithms
+# -----------------------------------------------------------------------------
+# ECDSA P-521 for stronger classical security (important for OCSP).
+# ML-DSA-87 for NIST Level 5 PQC security.
+# Note: IETF composite requires P-521 + ML-DSA-87 pairing.
+#
+algorithms:
+  - ecdsa-p521              # Classical: ~256-bit security
+  - ml-dsa-87               # PQC: NIST Level 5
+
+# -----------------------------------------------------------------------------
+# Hybrid Mode: Composite (IETF)
+# -----------------------------------------------------------------------------
+mode: composite
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 365 days for OCSP responder certificates.
+# Shorter validity limits exposure if responder key is compromised.
+#
+validity: 365d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "PKI Services"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  extKeyUsage:
+    critical: true
+    values:
+      - ocspSigning
+
+  # OCSP No Check (RFC 6960 Section 4.2.2.2.1)
+  # ---------------------------------------------------------------------------
+  # Prevents infinite recursion when checking OCSP responder status.
+  #
+  ocspNoCheck:
+    critical: false
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.6.5"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca-composite.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  # Note: No OCSP URL for OCSP responder cert (see ocspNoCheck above)
+  #
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca-composite.crt"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# Composite signature: ecdsa(sha384) + ML-DSA-87 combined
+# Both signatures must validate for the certificate to be trusted.

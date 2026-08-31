@@ -1,0 +1,146 @@
+# =============================================================================
+# Hybrid Catalyst Document Signing Certificate Profile (ECDSA P-256 + ML-DSA-65)
+# =============================================================================
+#
+# Usage: Certificate for signing documents with quantum-safe protection
+#
+# This certificate allows the holder to:
+#   - Sign documents with classical signature (ECDSA)
+#   - Include quantum-resistant signature (ML-DSA)
+#   - Provide backward compatibility with existing verifiers
+#   - Enable migration to PQC verification
+#
+# Standards: ITU-T X.509 Section 9.8 (Catalyst), RFC 5280, CMS (RFC 5652)
+#
+# Security Level:
+#   - Classical: ~128-bit (ECDSA P-256)
+#   - PQC: NIST Level 3 (ML-DSA-65)
+#
+# Quantum Safety: PROTECTED (Hybrid)
+#   Dual signatures protect against quantum attacks while maintaining
+#   compatibility with classical verifiers.
+#
+# Compatibility:
+#   - Classical verifiers: Verify ECDSA signature only
+#   - PQC-aware verifiers: Verify both signatures
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile hybrid/catalyst/signing \
+#       --var cn="Alice Smith"
+#
+#   # Using --var-file
+#   pki credential enroll --profile hybrid/catalyst/signing --var-file signing-vars.yaml
+#
+# Expected DN: CN=Alice Smith, OU=Users, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: hybrid/catalyst/signing
+description: "Document signing hybrid ECDSA P-256 + ML-DSA-65 (PQC transition)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - Signer identity name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithms
+# -----------------------------------------------------------------------------
+algorithms:
+  - ecdsa-p256              # Classical: backward compatible
+  - ml-dsa-65               # PQC: NIST Level 3
+
+# -----------------------------------------------------------------------------
+# Hybrid Mode: Catalyst
+# -----------------------------------------------------------------------------
+mode: catalyst
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+validity: 365d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "Users"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # digitalSignature: Sign content
+  # nonRepudiation:   Provide proof of origin
+  #
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+      - nonRepudiation
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  # No EKU - general purpose signing certificate.
+  #
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.5.4"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca-hybrid.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca-hybrid.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# Dual signatures: ecdsa(sha256) + ML-DSA (intrinsic)
+# Classical verifiers verify ECDSA, PQC-aware verifiers verify both.

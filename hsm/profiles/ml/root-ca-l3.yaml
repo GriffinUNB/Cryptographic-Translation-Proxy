@@ -1,0 +1,129 @@
+# =============================================================================
+# ML-DSA Root CA Certificate Profile (Pure Post-Quantum)
+# =============================================================================
+#
+# Usage: Root CA (trust anchor) with full quantum resistance
+#
+# This certificate provides:
+#   - Complete protection against quantum computer attacks
+#   - No reliance on classical cryptography
+#   - Highest NIST security level (Level 3)
+#
+# Standards: FIPS 204 (ML-DSA), RFC 5280 (X.509)
+#
+# Security Level: NIST Level 3 (~192-bit equivalent)
+#   ML-DSA-65 is the balanced ML-DSA variant.
+#   Equivalent security to AES-256 against quantum attacks.
+#
+# Quantum Safety: FULLY PROTECTED
+#   Pure PQC - no classical algorithms involved.
+#   Safe against both classical and quantum computers.
+#
+# Compatibility Warning:
+#   Pure PQC certificates are NOT compatible with existing PKI software.
+#   Most applications cannot verify ML-DSA signatures yet.
+#   For backward compatibility, use hybrid/catalyst/ profiles instead.
+#
+# Use Cases:
+#   - Future-proof PKI infrastructure
+#   - Internal systems with PQC-capable software
+#   - Research and testing environments
+#
+# Examples:
+#
+#   # Using --var
+#   pki ca init --profile ml/root-ca --ca-dir ./root-ca-pqc \
+#       --var cn="ACME Root CA PQC"
+#
+#   # Using --var-file
+#   pki ca init --profile ml/root-ca --ca-dir ./root-ca-pqc --var-file ca-vars.yaml
+#
+# Expected DN: CN=ACME Root CA PQC, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: ml/root-ca-l3
+description: "Root CA ML-DSA-65 (full post-quantum, NIST security level 5)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - Root CA name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# ML-DSA-65 (FIPS 204) - Module-Lattice Digital Signature Algorithm
+#   - NIST Level 3 security (~192-bit equivalent)
+#   - Strongest variant for maximum Root CA protection
+#   - Public key: ~1952 bytes, Signature: ~3309 bytes
+#
+algorithm: ml-dsa-65
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 20 years for Root CA.
+#
+validity: 7300d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: true
+    pathLen: 1
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  keyUsage:
+    critical: true
+    values:
+      - keyCertSign
+      - cRLSign
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "2.5.29.32.0"
+        cps: "https://pki.acme.example.com/cps"
+        userNotice: "ACME Corp Root CA - Post-Quantum (ML-DSA-65)"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# ML-DSA signatures are intrinsic to the algorithm (no override needed)

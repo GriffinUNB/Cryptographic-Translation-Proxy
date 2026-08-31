@@ -1,0 +1,143 @@
+# =============================================================================
+# ML-DSA Document Signing Certificate Profile (Pure Post-Quantum)
+# =============================================================================
+#
+# Usage: Certificate for signing documents, PDFs, and general data
+#
+# This certificate allows the holder to:
+#   - Sign documents with post-quantum signatures (ML-DSA)
+#   - Sign data and messages
+#   - Provide non-repudiation for signed content
+#   - Resist quantum computer attacks on signatures
+#
+# Note: For code signing, use ml/code-signing instead.
+#
+# Standards: FIPS 204 (ML-DSA), RFC 5280 (X.509), CMS (RFC 5652)
+#
+# Security Level: NIST Level 3 (~192-bit equivalent)
+#   ML-DSA-65 provides strong security with reasonable performance.
+#
+# Quantum Safety: FULLY PROTECTED
+#   Pure PQC signature - safe against quantum attacks.
+#
+# Compatibility Warning:
+#   Pure ML-DSA certificates require PQC-capable verification software.
+#   For backward compatibility, use hybrid/catalyst/signing instead.
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile ml/signing \
+#       --var cn="Alice Smith"
+#
+#   # Using --var-file
+#   pki credential enroll --profile ml/signing --var-file signing-vars.yaml
+#
+# Expected DN: CN=Alice Smith, OU=Users, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: ml/signing
+description: "Document signing certificate ML-DSA-65 (post-quantum)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - Signer identity name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# ML-DSA-65 (FIPS 204) - NIST Level 3
+#   - ~192-bit equivalent security
+#   - Good balance of security and performance
+#   - Public key: ~1952 bytes, Signature: ~3309 bytes
+#
+algorithm: ml-dsa-65
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+validity: 365d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "Users"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # digitalSignature: Sign content
+  # nonRepudiation:   Provide proof of origin
+  #
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+      - nonRepudiation
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  # No EKU - general purpose signing certificate.
+  #
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.5.3"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca-pqc.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca-pqc.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# ML-DSA signatures are intrinsic to the algorithm (no override needed)

@@ -1,0 +1,133 @@
+# =============================================================================
+# RSA Document Signing Certificate Profile
+# =============================================================================
+#
+# Usage: Certificate for signing documents, PDFs, and general data
+#
+# This certificate allows the holder to:
+#   - Sign documents (PDF, Office, etc.)
+#   - Sign data and messages
+#   - Provide non-repudiation for signed content
+#
+# Note: For code signing (executables, packages), use rsa/code-signing instead.
+#
+# Standards: RFC 5280 (X.509), CMS (RFC 5652)
+#
+# Security Level: ~112-bit (RSA-2048)
+#
+# Quantum Safety: VULNERABLE
+#   RSA is vulnerable to Cryptographically Relevant Quantum Computers (CRQC).
+#   For quantum-resistant document signing, use ml/signing.
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile rsa/signing \
+#       --var cn="Alice Smith"
+#
+#   # Using --var-file
+#   pki credential enroll --profile rsa/signing --var-file signing-vars.yaml
+#
+# Expected DN: CN=Alice Smith, OU=Users, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: rsa/signing
+description: "Document signing certificate RSA 2048-bit"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - Signer identity name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+algorithm: rsa-2048
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+validity: 365d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "Users"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # digitalSignature: Sign content
+  # nonRepudiation:   Provide proof of origin
+  #
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+      - nonRepudiation
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  # No EKU - general purpose signing certificate.
+  #
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.5.2"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca-rsa.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca-rsa.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# Defaults: scheme=rsassa-pss, hash=sha256

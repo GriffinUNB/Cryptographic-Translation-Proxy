@@ -1,0 +1,25 @@
+name: ec/tls-client-l5
+description: "TLS client ECDSA P-521"
+variables:
+  cn: {type: string, required: true}
+  email: {type: string, required: false}
+  organization: {type: string, required: false, default: "ACME Corp"}
+  country: {type: string, required: false, default: "US"}
+algorithm: ecdsa-p521
+validity: 365d
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "Users"
+  c: "{{ country }}"
+extensions:
+  basicConstraints: {critical: true, ca: false}
+  keyUsage:
+    critical: true
+    values: [digitalSignature]
+  extKeyUsage:
+    critical: false
+    values: [clientAuth]
+  subjectAltName:
+    critical: false
+    email: "{{ email }}"

@@ -1,0 +1,157 @@
+# =============================================================================
+# eIDAS Qualified Electronic Seal Certificate Profile
+# =============================================================================
+#
+# Usage: Qualified certificate for electronic seals (legal persons)
+#
+# This certificate allows the organization to:
+#   - Create qualified electronic seals (QESeal)
+#   - Seal documents to ensure origin and integrity
+#   - Prove organizational authentication for automated processes
+#
+# Standards: eIDAS Regulation (EU 910/2014), ETSI EN 319 412-5
+#
+# QCStatements included:
+#   - QcCompliance (0.4.0.1862.1.1): EU qualified certificate
+#   - QcType (0.4.0.1862.1.6.2): Electronic seal (eseal)
+#   - QcSSCD (0.4.0.1862.1.4): Private key on Qualified Seal Creation Device
+#   - QcRetentionPeriod (0.4.0.1862.1.3): Document retention period
+#   - QcPDS (0.4.0.1862.1.5): PKI Disclosure Statements location
+#
+# Security Level: ~128-bit (ECDSA P-256)
+#
+# Quantum Safety: VULNERABLE
+#   ECDSA is vulnerable to Cryptographically Relevant Quantum Computers (CRQC).
+#   For quantum-resistant qualified seals, use ml-dsa based profiles.
+#
+# Examples:
+#
+#   # Create qualified seal certificate
+#   pki credential enroll --profile eidas/qc-eseal \
+#       --var cn="ACME Corporation" \
+#       --var organization="ACME Corporation" \
+#       --var organizationIdentifier="VATFR-12345678901" \
+#       --var country="FR" \
+#       --var pds_url="https://pki.example.com/pds-en.pdf" \
+#       --var pds_lang="en"
+#
+# Expected DN: CN=ACME Corporation, O=ACME Corporation, 2.5.4.97=VATFR-12345678901, C=FR
+#
+# =============================================================================
+
+name: eidas/qc-eseal
+description: "eIDAS Qualified Electronic Seal Certificate (Legal Person)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - Organization or seal name"
+
+  organization:
+    type: string
+    required: true
+    description: "Organization legal name"
+
+  organizationIdentifier:
+    type: string
+    required: true
+    description: "Organization identifier (e.g., VATFR-12345678901, NTRGB-12345678)"
+
+  country:
+    type: string
+    required: true
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# ECDSA P-256 for qualified seals.
+# Note: Key must be generated on a Qualified Seal Creation Device (QSCD).
+#
+algorithm: ecdsa-p256
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 2 years (730 days) for qualified seal certificates.
+#
+validity: 730d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+# eIDAS requires specific subject attributes for legal persons.
+# organizationIdentifier (OID 2.5.4.97) is mandatory for legal person identification.
+#
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  organizationIdentifier: "{{ organizationIdentifier }}"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # digitalSignature: Required for creating seals
+  # nonRepudiation:   Provides origin authenticity
+  #
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+      - nonRepudiation
+
+  # QCStatements (ETSI EN 319 412-5)
+  # ---------------------------------------------------------------------------
+  # Qualifies this as an eIDAS compliant seal certificate.
+  # NOTE: Customize qcPDS URLs for your organization before use.
+  #
+  qcStatements:
+    critical: false
+    qcCompliance: true            # EU qualified certificate
+    qcType: eseal                 # Electronic seal (legal person)
+    qcSSCD: true                  # Private key on QSCD
+    qcRetentionPeriod: 15         # 15 years retention
+    qcPDS:                        # CUSTOMIZE: Update with your PDS URLs
+      - url: "https://pki.example.com/pds-en.pdf"
+        language: "en"
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "0.4.0.2042.1.2"     # ETSI QCP-l-qscd policy OID
+        cps: "https://pki.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.example.com/qca.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.example.com/certs/qca.crt"
+    ocsp:
+      - "http://ocsp.example.com"

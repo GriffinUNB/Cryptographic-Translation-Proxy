@@ -1,0 +1,168 @@
+# =============================================================================
+# Hybrid Composite TLS Client Certificate Profile (IETF Format)
+# =============================================================================
+#
+# Usage: Client authentication in mTLS with IETF composite signatures
+#
+# This certificate allows a user or device to:
+#   - Authenticate using composite hybrid signatures
+#   - Require servers to verify BOTH classical and PQC signatures
+#   - Provide maximum cryptographic assurance for client identity
+#
+# Standards: IETF draft-ietf-lamps-pq-composite-sigs-13 (DRAFT), RFC 5280, RFC 8446
+#
+# Security Level:
+#   - Classical: ~128-bit (ECDSA P-256)
+#   - PQC: NIST Level 3 (~256-bit equivalent, ML-DSA-65)
+#
+# Quantum Safety: PROTECTED (Composite Hybrid)
+#   Both signatures MUST validate for client authentication to succeed.
+#
+# Composite Mode (IETF draft-ietf-lamps-pq-composite-sigs-13 (DRAFT)):
+#   - Stricter than Catalyst mode
+#   - Both signatures cryptographically bound
+#   - Server MUST verify both to accept client authentication
+#
+# Compatibility Warning:
+#   Composite certificates require composite-aware TLS stacks.
+#   Not compatible with standard mTLS servers.
+#   For backward compatibility, use hybrid/catalyst/tls-client instead.
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile hybrid/composite/tls-client \
+#       --var cn="alice@acme.example.com" \
+#       --var email="alice@acme.example.com"
+#
+#   # Using --var-file
+#   pki credential enroll --profile hybrid/composite/tls-client --var-file client-vars.yaml
+#
+# Expected DN: CN=alice@acme.example.com, OU=Users, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: hybrid/composite/tls-client
+description: "TLS client hybrid composite ECDSA P-256 + ML-DSA-65 (IETF format)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - User or device identifier"
+
+  email:
+    type: string
+    required: false
+    pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+    description: "RFC 822 email address (optional)"
+
+  serial_number:
+    type: string
+    required: false
+    description: "Device serial number for hardware authentication"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithms
+# -----------------------------------------------------------------------------
+algorithms:
+  - ecdsa-p256              # Classical: ~128-bit security
+  - ml-dsa-65               # PQC: NIST Level 3
+
+# -----------------------------------------------------------------------------
+# Hybrid Mode: Composite (IETF)
+# -----------------------------------------------------------------------------
+mode: composite
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+validity: 365d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "Users"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # digitalSignature: Composite signature signs TLS handshake
+  #
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  extKeyUsage:
+    critical: false
+    values:
+      - clientAuth
+
+  # Subject Alternative Name (RFC 5280 Section 4.2.1.6)
+  # ---------------------------------------------------------------------------
+  subjectAltName:
+    critical: false
+    email: "{{ email }}"
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.3.5"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca-composite.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca-composite.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# Composite signature: ecdsa(sha384) + ML-DSA combined
+# Both signatures must validate for the certificate to be trusted.

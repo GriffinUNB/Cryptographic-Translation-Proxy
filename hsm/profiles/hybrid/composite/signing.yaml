@@ -1,0 +1,155 @@
+# =============================================================================
+# Hybrid Composite Document Signing Certificate Profile (IETF Format)
+# =============================================================================
+#
+# Usage: Certificate for signing documents with IETF composite signatures
+#
+# This certificate allows the holder to:
+#   - Sign documents with composite hybrid signatures
+#   - Require BOTH signature validations for document verification
+#   - Provide maximum long-term cryptographic assurance
+#   - Achieve non-repudiation with defense-in-depth
+#
+# Standards: IETF draft-ietf-lamps-pq-composite-sigs-13 (DRAFT), RFC 5280, CMS (RFC 5652)
+#
+# Security Level:
+#   - Classical: ~256-bit (ECDSA P-521)
+#   - PQC: NIST Level 5 (~256-bit equivalent, ML-DSA-87)
+#
+# Quantum Safety: PROTECTED (Composite Hybrid)
+#   Both signatures MUST validate for the signature to be trusted.
+#   Even if one algorithm is broken, both must be compromised to forge.
+#
+# Why Composite for Signing:
+#   Documents may need to remain trustworthy for decades.
+#   Composite signatures ensure defense-in-depth against future
+#   cryptanalytic advances in either classical or PQC algorithms.
+#
+# Compatibility Warning:
+#   Composite signatures require composite-aware verifiers.
+#   For backward compatibility, use hybrid/catalyst/signing instead.
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile hybrid/composite/signing \
+#       --var cn="Alice Smith"
+#
+#   # Using --var-file
+#   pki credential enroll --profile hybrid/composite/signing --var-file signing-vars.yaml
+#
+# Expected DN: CN=Alice Smith, OU=Users, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: hybrid/composite/signing
+description: "Document signing hybrid composite ECDSA P-521 + ML-DSA-87 (IETF format)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - Signer identity name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithms
+# -----------------------------------------------------------------------------
+# ECDSA P-521 for stronger classical security.
+# ML-DSA-87 for NIST Level 5 PQC security.
+# Note: IETF composite requires P-521 + ML-DSA-87 pairing.
+#
+algorithms:
+  - ecdsa-p521              # Classical: ~256-bit security
+  - ml-dsa-87               # PQC: NIST Level 5
+
+# -----------------------------------------------------------------------------
+# Hybrid Mode: Composite (IETF)
+# -----------------------------------------------------------------------------
+mode: composite
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+validity: 365d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "Users"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # digitalSignature: Sign content
+  # nonRepudiation:   Provide proof of origin
+  #
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+      - nonRepudiation
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  # No EKU - general purpose signing certificate.
+  #
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.5.6"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca-composite.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca-composite.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# Composite signature: ecdsa(sha384) + ML-DSA-87 combined
+# Both signatures must validate for the certificate to be trusted.

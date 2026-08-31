@@ -1,0 +1,165 @@
+# =============================================================================
+# ECDSA TLS Client Certificate Profile
+# =============================================================================
+#
+# Usage: Certificate for client authentication (mTLS)
+#
+# This certificate allows a user or device to:
+#   - Authenticate to servers using mutual TLS (mTLS)
+#   - Access protected APIs and services
+#   - Replace password-based authentication with certificate-based auth
+#
+# Standards: RFC 5280 (X.509), RFC 8446 (TLS 1.3)
+#
+# Security Level: ~128-bit (ECDSA P-256)
+#
+# Quantum Safety: VULNERABLE
+#   ECDSA is vulnerable to Cryptographically Relevant Quantum Computers (CRQC).
+#   For quantum-resistant certificates, use hybrid/catalyst/ or ml/ profiles.
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile ec/tls-client \
+#       --var cn=alice@acme.example.com \
+#       --var email=alice@acme.example.com
+#
+#   # Using --var-file
+#   pki credential enroll --profile ec/tls-client --var-file client-vars.yaml
+#
+# Expected DN: CN=alice@acme.example.com, OU=Users, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: ec/tls-client
+description: "TLS client ECDSA P-256 (mutual TLS authentication)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+# Input variables with validation constraints.
+# Use: pki credential enroll --profile ec/tls-client --var cn=alice@example.com
+#
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - User identifier (email or username)"
+
+  email:
+    type: string
+    required: false
+    pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+    description: "RFC 822 email address"
+
+  serial_number:
+    type: string
+    required: false
+    description: "Employee ID or device serial number"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# ECDSA P-256 provides ~128-bit security.
+# Client certificates use P-256 for compatibility with all TLS libraries.
+#
+algorithm: ecdsa-p256
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 365 days is standard for user certificates.
+# Annual renewal aligns with employee lifecycle management.
+#
+validity: 365d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "Users"
+  c: "{{ country }}"
+  serialNumber: "{{ serial_number }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # digitalSignature: Required for TLS client authentication handshake
+  # Note: No keyEncipherment needed (server initiates key exchange)
+  #
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  # clientAuth (OID 1.3.6.1.5.5.7.3.2): TLS client authentication
+  #
+  extKeyUsage:
+    critical: false
+    values:
+      - clientAuth
+
+  # Subject Alternative Name (RFC 5280 Section 4.2.1.6)
+  # ---------------------------------------------------------------------------
+  # Email address in SAN for user identification.
+  # Many systems use the SAN email to map certificate to user account.
+  #
+  subjectAltName:
+    critical: false
+    email: "{{ email }}"
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.3.1"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# Defaults: scheme=ecdsa, hash=sha256

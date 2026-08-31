@@ -1,0 +1,18 @@
+\begin{table*}[htbp]
+  \centering
+  \caption{\textcolor{red}{HSM key-generation micro-timing breakdown (mean $\pm$ SD, ms).}}
+  \label{tab:keygen-latency}
+  \scriptsize\setlength{\tabcolsep}{1.5pt}
+  \begin{tabular}{lllrrrrrrrr}
+    \toprule
+    \textbf{Level} & \textbf{Mode} & \textbf{Algorithm} & \textbf{Firmware} & \textbf{C\_Login} & \textbf{PKCS\#11 OH} & \textbf{Slot enum} & \textbf{Key search} & \textbf{Pub extract} & \textbf{Go start} & \textbf{Total ($\mu \pm \sigma$)} \\
+    \midrule
+  Low Security & HSM & ECDSA P-256 & $2.916 \pm 0.483$ & $41.393 \pm 1.404$ & $22.600$ & $17.217$ & $1.299$ & $2.831$ & $1.560 \pm 0.169$ & \textbf{$89.816 \pm 3.003$} \\
+  Low Security & HSM & ML-DSA-44 & $1.558 \pm 0.587$ & $41.318 \pm 1.492$ & $22.637$ & $17.133$ & $2.846$ & $1.264$ & $1.572 \pm 0.172$ & \textbf{$88.328 \pm 4.115$} \\
+  Medium Security & HSM & ECDSA P-384 & $6.125 \pm 0.667$ & $41.386 \pm 1.431$ & $22.553$ & $17.340$ & $1.323$ & $2.920$ & $1.542 \pm 0.149$ & \textbf{$93.189 \pm 3.031$} \\
+  Medium Security & HSM & ML-DSA-65 & $1.847 \pm 0.529$ & $41.308 \pm 1.451$ & $22.666$ & $17.252$ & $3.609$ & $1.457$ & $1.589 \pm 0.176$ & \textbf{$89.728 \pm 4.412$} \\
+  High Security & HSM & ECDSA P-521 & $13.551 \pm 0.927$ & $41.472 \pm 1.887$ & $22.695$ & $17.571$ & $1.360$ & $2.971$ & $1.549 \pm 0.164$ & \textbf{$101.169 \pm 4.073$} \\
+  High Security & HSM & ML-DSA-87 & $2.235 \pm 0.440$ & $41.293 \pm 1.701$ & $22.545$ & $17.219$ & $4.154$ & $1.651$ & $1.581 \pm 0.161$ & \textbf{$90.679 \pm 4.356$} \\
+    \bottomrule
+  \end{tabular}
+\end{table*}

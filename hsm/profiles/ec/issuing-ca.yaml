@@ -1,0 +1,144 @@
+# =============================================================================
+# ECDSA Issuing CA Certificate Profile
+# =============================================================================
+#
+# Usage: Intermediate CA that issues end-entity certificates
+#
+# This CA is the "online" CA that issues certificates daily.
+# The Issuing CA should:
+#   - Be signed by the Root CA (or another intermediate)
+#   - Run on a secured, online server (or HSM)
+#   - Issue end-entity certificates only (pathLen: 0)
+#   - Have its private key protected but accessible for automation
+#
+# Standards: RFC 5280 (X.509), CA/Browser Forum Baseline Requirements
+#
+# Security Level: ~128-bit (ECDSA P-256)
+#
+# Quantum Safety: VULNERABLE
+#   ECDSA is vulnerable to Cryptographically Relevant Quantum Computers (CRQC).
+#   For quantum-resistant PKI, use hybrid/catalyst/issuing-ca.
+#
+# Examples:
+#
+#   # Using --var
+#   pki ca init --profile ec/issuing-ca --ca-dir ./issuing-ca \
+#       --var cn="ACME Issuing CA" \
+#       --parent ./root-ca
+#
+#   # Using --var-file
+#   pki ca init --profile ec/issuing-ca --ca-dir ./issuing-ca --var-file ca-vars.yaml --parent ./root-ca
+#
+# Expected DN: CN=ACME Issuing CA, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: ec/issuing-ca
+description: "Issuing CA ECDSA P-256 - online certificate authority"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+# Input variables with validation constraints.
+# Use: pki ca init --profile ec/issuing-ca --var cn="My Issuing CA"
+#
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - Issuing CA name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# P-256 for Issuing CA (good balance of security and performance).
+# P-256 is faster than P-384, important for high-volume issuance.
+#
+algorithm: ecdsa-p256
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 10 years (3650 days) for Issuing CA.
+# Must be shorter than Root CA validity.
+# Allows for algorithm migration within Root CA lifetime.
+#
+validity: 3650d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  # ca: true      - This is a Certificate Authority
+  # pathLen: 0    - Cannot sign other CAs (end-entity only)
+  #
+  basicConstraints:
+    critical: true
+    ca: true
+    pathLen: 0
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # keyCertSign: Sign end-entity certificates
+  # cRLSign:     Sign Certificate Revocation Lists
+  #
+  keyUsage:
+    critical: true
+    values:
+      - keyCertSign
+      - cRLSign
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.0.1"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  # Points to Root CA's CRL for revocation checking of this Issuing CA.
+  #
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/root-ca.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  # caIssuers: Where to download the Root CA certificate
+  #
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/root-ca.crt"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# Defaults: scheme=ecdsa, hash=sha256

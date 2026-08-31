@@ -1,0 +1,177 @@
+# =============================================================================
+# ML-KEM TLS Server Encryption Certificate Profile (Pure Post-Quantum)
+# =============================================================================
+#
+# Usage: TLS server key encapsulation with quantum-resistant key exchange
+#
+# This certificate allows a server to:
+#   - Perform post-quantum key exchange (ML-KEM)
+#   - Establish quantum-safe shared secrets with clients
+#   - Protect session keys against "harvest now, decrypt later" attacks
+#
+# Standards: FIPS 203 (ML-KEM), RFC 5280 (X.509), RFC 9883 (KEM in PKIX)
+#
+# Security Level: NIST Level 3 (~192-bit equivalent)
+#   ML-KEM-768 provides strong security with reasonable performance.
+#
+# Quantum Safety: FULLY PROTECTED
+#   Pure PQC key encapsulation - safe against quantum attacks.
+#
+# Dual Certificate Pattern (RFC 9883):
+#   For complete PQC TLS, use two certificates in a bundle:
+#   1. ml/tls-server-sign - Authentication (ML-DSA signature)
+#   2. ml/tls-server-encrypt (this profile) - Key encapsulation
+#
+#   IMPORTANT: RFC 9883 requires the signing certificate to attest the
+#   KEM certificate. Both must be issued together in the same bundle.
+#
+# Compatibility Warning:
+#   Pure ML-KEM certificates require PQC-capable TLS implementations.
+#   Not compatible with standard browsers/servers yet.
+#   For backward compatibility, use hybrid/catalyst/tls-server instead.
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll \
+#       --profile ml/tls-server-sign \
+#       --profile ml/tls-server-encrypt \
+#       --var cn="api.acme.example.com" \
+#       --var dns_names="api.acme.example.com,api-v2.acme.example.com"
+#
+#   # Using --var-file
+#   pki credential enroll --profile ml/tls-server-encrypt --var-file server-vars.yaml
+#
+# Expected DN: CN=api.acme.example.com, OU=Servers, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: ml/tls-server-encrypt
+description: "TLS server encryption ML-KEM-768 (post-quantum key exchange)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: dns_name
+    required: true
+    wildcard:
+      allowed: true
+    description: "Common Name - Server's primary FQDN (wildcards allowed)"
+
+  dns_names:
+    type: dns_names
+    required: false
+    default: []
+    wildcard:
+      allowed: true
+    description: "DNS Subject Alternative Names (wildcards allowed)"
+
+  ip_addresses:
+    type: ip_list
+    required: false
+    default: []
+    description: "IP Address Subject Alternative Names"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# ML-KEM-768 (FIPS 203) - Module-Lattice Key Encapsulation Mechanism
+#   - NIST Level 3 security (~192-bit equivalent)
+#   - Matches ML-DSA-65 security level for consistency
+#   - Public key: ~1184 bytes, Ciphertext: ~1088 bytes
+#
+algorithm: ml-kem-768
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+validity: 365d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "Servers"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # keyEncipherment: ML-KEM encapsulates session keys
+  #
+  keyUsage:
+    critical: true
+    values:
+      - keyEncipherment
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  extKeyUsage:
+    critical: false
+    values:
+      - serverAuth
+
+  # Subject Alternative Name (RFC 5280 Section 4.2.1.6)
+  # ---------------------------------------------------------------------------
+  subjectAltName:
+    critical: false
+    dns: "{{ dns_names }}"
+    ip: "{{ ip_addresses }}"
+    dns_include_cn: true
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.2.2"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca-pqc.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca-pqc.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# KEM certificates are signed by the issuing CA using its signature algorithm.
+# ML-KEM is a key encapsulation mechanism, not a signature algorithm.

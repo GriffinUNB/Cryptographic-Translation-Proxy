@@ -1,0 +1,150 @@
+# =============================================================================
+# ECDSA Timestamping Certificate Profile
+# =============================================================================
+#
+# Usage: Certificate for RFC 3161 Timestamping Authority (TSA)
+#
+# This certificate allows the TSA to:
+#   - Issue trusted timestamps (proof that data existed at a point in time)
+#   - Extend validity of signed documents beyond signer's certificate expiration
+#   - Provide non-repudiation evidence for legal/compliance purposes
+#
+# Standards: RFC 3161 (TSA), RFC 5280 (X.509), RFC 5816 (ESSCertIDv2)
+#
+# Security Level: ~128-bit (ECDSA P-256)
+#
+# Quantum Safety: VULNERABLE
+#   ECDSA is vulnerable to Cryptographically Relevant Quantum Computers (CRQC).
+#   For quantum-resistant timestamping, use ml/timestamping.
+#
+# Important: Timestamping certificates MUST have:
+#   - extKeyUsage: timeStamping ONLY (no other EKUs)
+#   - extKeyUsage: CRITICAL (per RFC 3161 Section 2.3)
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile ec/timestamping \
+#       --var cn="ACME TSA"
+#
+#   # Using --var-file
+#   pki credential enroll --profile ec/timestamping --var-file tsa-vars.yaml
+#
+# Expected DN: CN=ACME TSA, OU=PKI Services, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: ec/timestamping
+description: "Timestamping certificate ECDSA P-256 (RFC 3161 TSA)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+# Input variables with validation constraints.
+# Use: pki credential enroll --profile ec/timestamping --var cn="My TSA"
+#
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - TSA service name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# ECDSA P-256 for fast timestamp token signing.
+# TSAs may issue many tokens per second; performance matters.
+#
+algorithm: ecdsa-p256
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 3 years (1095 days) for TSA certificates.
+# Longer than typical end-entity certs because:
+#   - Timestamps extend document validity
+#   - TSA infrastructure changes are disruptive
+#
+validity: 1095d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "PKI Services"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # digitalSignature: Required for signing timestamp tokens
+  #
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  # timeStamping (OID 1.3.6.1.5.5.7.3.8): RFC 3161 timestamping
+  # CRITICAL: RFC 3161 Section 2.3 requires this to be critical
+  # EXCLUSIVE: No other EKUs allowed per RFC 3161
+  #
+  extKeyUsage:
+    critical: true            # MUST be critical per RFC 3161
+    values:
+      - timeStamping          # ONLY timeStamping allowed
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.5.1"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# Defaults: scheme=ecdsa, hash=sha256

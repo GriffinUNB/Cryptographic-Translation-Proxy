@@ -1,0 +1,148 @@
+# =============================================================================
+# ML-DSA Issuing CA Certificate Profile (Pure Post-Quantum)
+# =============================================================================
+#
+# Usage: Intermediate CA (subordinate to Root CA) with quantum resistance
+#
+# This certificate allows the Issuing CA to:
+#   - Issue end-entity certificates with quantum-resistant signatures
+#   - Sign CRLs (Certificate Revocation Lists)
+#   - Operate as subordinate to an ML-DSA Root CA
+#
+# Standards: FIPS 204 (ML-DSA), RFC 5280 (X.509)
+#
+# Security Level: NIST Level 2 (SHA-256 equivalent)
+#   ML-DSA-44 provides fastest variant than ML-DSA-87.
+#   Appropriate for issuing CA (Root CA uses ML-DSA-87 for maximum protection).
+#
+# Quantum Safety: FULLY PROTECTED
+#   Pure PQC - no classical algorithms involved.
+#   Safe against both classical and quantum computers.
+#
+# Path Length: 0
+#   This CA can only issue end-entity certificates, not other CAs.
+#   Prevents unauthorized CA hierarchy extension.
+#
+# Compatibility Warning:
+#   Pure PQC certificates are NOT compatible with existing PKI software.
+#   Most applications cannot verify ML-DSA signatures yet.
+#   For backward compatibility, use hybrid/catalyst/issuing-ca instead.
+#
+# Examples:
+#
+#   # Using --var
+#   pki ca init --profile ml/issuing-ca --ca-dir ./issuing-ca-pqc \
+#       --var cn="ACME Issuing CA PQC" \
+#       --parent ./root-ca-pqc
+#
+#   # Using --var-file
+#   pki ca init --profile ml/issuing-ca --ca-dir ./issuing-ca-pqc --var-file ca-vars.yaml --parent ./root-ca-pqc
+#
+# Expected DN: CN=ACME Issuing CA PQC, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: ml/issuing-ca-l1
+description: "Issuing CA ML-DSA-44 (post-quantum, NIST security level 2)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - Issuing CA name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# ML-DSA-44 (FIPS 204) - Module-Lattice Digital Signature Algorithm
+#   - NIST Level 2 security (~128-bit equivalent)
+#   - Good balance of security and performance for issuing operations
+#   - Public key: ~1952 bytes, Signature: ~3309 bytes
+#
+algorithm: ml-dsa-44
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 10 years for Issuing CA.
+# Shorter than Root CA (20 years) to allow algorithm agility.
+#
+validity: 3650d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  # ca: true - This is a CA certificate
+  # pathLen: 0 - Can only issue end-entity certs, not sub-CAs
+  #
+  basicConstraints:
+    critical: true
+    ca: true
+    pathLen: 0
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # keyCertSign: Required to sign certificates
+  # cRLSign: Required to sign CRLs
+  #
+  keyUsage:
+    critical: true
+    values:
+      - keyCertSign
+      - cRLSign
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.0.2"
+        cps: "https://pki.acme.example.com/cps"
+        userNotice: "ACME Corp Issuing CA Certificate Policy (PQC)"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/root-ca-pqc.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/root-ca-pqc.crt"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# ML-DSA signatures are intrinsic to the algorithm (no override needed)

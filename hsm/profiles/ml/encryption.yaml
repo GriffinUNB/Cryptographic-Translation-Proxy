@@ -1,0 +1,138 @@
+# =============================================================================
+# ML-KEM Encryption Certificate Profile (Pure Post-Quantum)
+# =============================================================================
+#
+# Usage: Certificate for encrypting data and messages (CMS, general)
+#
+# This certificate allows the holder to:
+#   - Receive encrypted content using post-quantum key exchange (ML-KEM)
+#   - Decrypt data using quantum-resistant key encapsulation
+#   - Protect data against "harvest now, decrypt later" attacks
+#
+# Standards: FIPS 203 (ML-KEM), RFC 5280 (X.509), CMS (RFC 5652)
+#
+# Security Level: NIST Level 3 (~192-bit equivalent)
+#   ML-KEM-768 provides strong security with reasonable performance.
+#
+# Quantum Safety: FULLY PROTECTED
+#   Pure PQC key encapsulation - safe against quantum attacks.
+#
+# Compatibility Warning:
+#   Pure ML-KEM certificates require PQC-capable encryption software.
+#   Not compatible with standard CMS implementations yet.
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile ml/encryption \
+#       --var cn="Alice Smith"
+#
+#   # Using --var-file
+#   pki credential enroll --profile ml/encryption --var-file encryption-vars.yaml
+#
+# Expected DN: CN=Alice Smith, OU=Users, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: ml/encryption
+description: "Encryption certificate ML-KEM-768 (post-quantum)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - Recipient identity name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# ML-KEM-768 (FIPS 203) - Module-Lattice Key Encapsulation Mechanism
+#   - NIST Level 3 security (~192-bit equivalent)
+#   - Public key: ~1184 bytes, Ciphertext: ~1088 bytes
+#
+algorithm: ml-kem-768
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+validity: 365d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "Users"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # keyEncipherment: ML-KEM encapsulates content encryption keys
+  #
+  keyUsage:
+    critical: true
+    values:
+      - keyEncipherment
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  # No EKU - general purpose encryption certificate.
+  #
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.6.2"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca-pqc.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca-pqc.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# KEM certificates are signed by the issuing CA using its signature algorithm.
+# ML-KEM is a key encapsulation mechanism, not a signature algorithm.

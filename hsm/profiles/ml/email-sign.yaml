@@ -1,0 +1,168 @@
+# =============================================================================
+# ML-DSA Email Signature Certificate Profile (Pure Post-Quantum)
+# =============================================================================
+#
+# Usage: S/MIME email signing with quantum-resistant signatures
+#
+# This certificate allows a user to:
+#   - Sign emails with post-quantum signatures (ML-DSA)
+#   - Provide non-repudiation for email content
+#   - Resist quantum computer attacks on email authentication
+#
+# Standards: FIPS 204 (ML-DSA), RFC 5280 (X.509), RFC 8550 (S/MIME 4.0)
+#
+# Security Level: NIST Level 3 (~192-bit equivalent)
+#   ML-DSA-65 provides strong security with reasonable performance.
+#
+# Quantum Safety: FULLY PROTECTED
+#   Pure PQC signature - safe against quantum attacks.
+#
+# Dual Certificate Pattern:
+#   For complete PQC S/MIME, use two certificates:
+#   1. ml/email-sign (this profile) - Signing
+#   2. ml/email-encrypt - Encryption (ML-KEM)
+#
+# Compatibility Warning:
+#   Pure ML-DSA certificates require PQC-capable email clients.
+#   Not compatible with standard email clients yet.
+#   For backward compatibility, use hybrid/catalyst/email instead.
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll \
+#       --profile ml/email-sign \
+#       --profile ml/email-encrypt \
+#       --var cn="Alice Smith" \
+#       --var email="alice@acme.example.com"
+#
+#   # Using --var-file
+#   pki credential enroll --profile ml/email-sign --var-file email-vars.yaml
+#
+# Expected DN: CN=Alice Smith, OU=Users, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: ml/email-sign
+description: "Email (S/MIME) signature ML-DSA-65 (post-quantum)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - User's display name"
+
+  email:
+    type: string
+    required: true
+    pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+    description: "RFC 822 email address (required for S/MIME)"
+
+  serial_number:
+    type: string
+    required: false
+    description: "Employee ID"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# ML-DSA-65 (FIPS 204) - NIST Level 3
+#   - ~192-bit equivalent security
+#   - Good balance of security and performance
+#   - Public key: ~1952 bytes, Signature: ~3309 bytes
+#
+algorithm: ml-dsa-65
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+validity: 365d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "Users"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # digitalSignature: ML-DSA signs email content
+  #
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  extKeyUsage:
+    critical: false
+    values:
+      - emailProtection
+
+  # Subject Alternative Name (RFC 5280 Section 4.2.1.6)
+  # ---------------------------------------------------------------------------
+  # Email address in SAN is REQUIRED for S/MIME (RFC 8550)
+  #
+  subjectAltName:
+    critical: false
+    email: "{{ email }}"
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.1.2"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca-pqc.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca-pqc.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# ML-DSA signatures are intrinsic to the algorithm (no override needed)
