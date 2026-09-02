@@ -69,14 +69,12 @@ for ALGO in $ALGOS; do
   for BATCH in 1 2 3 4 5 6 7 8 9 10; do
     echo "=== $ALGO batch $BATCH (N=$N) ==="
     restart_hsm
-    # Re-enable trace after HSM restart (container may have reloaded cfg)
     enable_trace
 
     PREFIX="kc_hsm_${ALGO}_batch${BATCH}"
     STDERR_FILE="/tmp/${PREFIX}_stderr.txt"
     : > "$STDERR_FILE"
 
-    # Clear trace log so we can map iterations 1:1
     docker exec "$CONT" rm -f /tmp/cs_pkcs11_R3.log
 
     for i in $(seq 1 "$N"); do
@@ -111,7 +109,6 @@ for ALGO in $ALGOS; do
       : > "$TD/${PREFIX}_c_opensession_ms.txt"
     fi
 
-    # Sample counts + sanity check
     for tag in hsm_keygen_${ALGO} kp_generate_hsm_${ALGO} main_start fw_keygen c_login; do
       f="$TD/${PREFIX}_${tag}_ms.txt"
       samp=$(wc -l < "$f" 2>/dev/null | tr -d ' ' || echo 0)

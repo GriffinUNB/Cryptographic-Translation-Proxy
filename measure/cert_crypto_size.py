@@ -26,7 +26,6 @@ from cryptography import x509
 OID_ALT_SPKI = "2.5.29.72"
 OID_ALT_SIGALG = "2.5.29.73"
 
-# Fixed, documented DER signature sizes (bytes) per algorithm / curve.
 SIG_SIZE = {
     "secp256r1": 72, "secp384r1": 104, "secp521r1": 139,          # ECDSA
     "2.16.840.1.101.3.4.3.17": 2420,   # ML-DSA-44
@@ -48,7 +47,6 @@ def _der_len_of_pubkey(pem_path):
 
 def _oid_from_algid(der):
     """Dotted OID from a DER AlgorithmIdentifier (SEQUENCE { OBJECT IDENTIFIER, ... })."""
-    # AlgorithmIdentifier ::= SEQUENCE { algorithm OBJECT IDENTIFIER, parameters ANY OPTIONAL }
     if not der or der[0] != 0x30:
         return ""
     off = 2

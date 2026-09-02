@@ -12,7 +12,6 @@ tables_dir = os.path.join(dir_path, "..", "tables")
 os.makedirs(out_dir, exist_ok=True)
 os.makedirs(tables_dir, exist_ok=True)
 
-# Publication-grade typography and styling parameters
 plt.rcParams.update({
     "font.family": "serif",
     "font.serif": ["Times New Roman", "Times", "DejaVu Serif"],
@@ -42,7 +41,7 @@ colors = {
     "extract": "#9467BD",    # Key/public-key extraction
     "internal": "#8C564B",   # Internal overhead
     "pqc_processing": "#F0E442",  # PQC/Catalyst processing
-    "verify_overhead": "#6A3D9A",
+    "verify_overhead": "#6A3D9A", # Verify overhead
     "framework": "#17BECF",  # Certificate framework + PEM
     "total": "#BDBDBD",      # Total-only fallback bar
 }
@@ -59,7 +58,6 @@ ALGO_FULL = {"ecdsa-p256": "ECDSA P-256", "ecdsa-p384": "ECDSA P-384", "ecdsa-p5
 def load_vals_stats(prefix, tag):
     f = os.path.join(timing_dir, f"{prefix}_{tag}_ms.txt")
     if not os.path.isfile(f):
-        # Try batch files (e.g., kc_hsm_ecdsa-p256_batch1_main_start_ms.txt)
         batch_files = sorted(glob.glob(os.path.join(timing_dir, f"{prefix}_batch*_{tag}_ms.txt")))
         if not batch_files:
             return 0.0, 0.0
@@ -181,13 +179,11 @@ def gen_issue_figure():
             go_start, go_start_std = load_exclusive_stats(
                 f"{level}_issue_{key}", "main_start", ["issue_total"])
 
-            # PKCS#11 sub-timers are inside sign (load_signer). Show them as separate segments.
             p11_mod_v = p11_mod
             p11_sk_v = p11_pool + p11_fk
             p11_ext_v = p11_ext
             sign_remaining = max(0, sign - p11_mod_v - p11_sk_v - p11_ext_v)
 
-            # Split sign_remaining: amortized C Login + other signer overhead
             c_login_seg = c_login_amortized
             other_signer = max(0, sign_remaining - c_login_seg)
             c_login_m[ei] = c_login_seg
@@ -198,9 +194,9 @@ def gen_issue_figure():
             sign_m.append(sign_remaining)
             hsm_m.append(sign_remaining)
             hsm_s.append(s_std)
-            hsm_sign_m.append(hsm)  # Actual HSM signing (separate from C_Login)
+            hsm_sign_m.append(hsm)
             hsm_sign_s.append(h_std)
-            cat_oh_m.append(cat_overhead)  # Catalyst overhead (hybrid only)
+            cat_oh_m.append(cat_overhead)
             p11_mod_seg.append(p11_mod_v)
             p11_sk_seg.append(p11_sk_v)
             p11_ext_seg.append(p11_ext_v)
@@ -224,17 +220,12 @@ def gen_issue_figure():
 
             comps = c_login_m[ei] + other_signer_m[ei] + cat_oh_m[ei] + prof + p11_mod_v + p11_sk_v + p11_ext_v + go_start + pqc_raw + hsm_sign_m[ei]
             intrnl = max(0, total - comps)
-            # If segments exceed total (timer overlap), absorb excess from other_signer
             if intrnl == 0 and comps > total:
                 excess = comps - total
                 other_signer_m[ei] = max(0, other_signer_m[ei] - excess)
             int_ovh.append(intrnl)
             macro_stds.append(ms_std)
 
-        # Stack order (bottom -> top): C Login (amortized), Other signer load,
-        # Profile loading, PKCS#11 module, Session search, Key extract,
-        # Internal overhead, Go startup, PQC/Catalyst processing, HSM Signing, Catalyst overhead.
-        # Colored/algorithm-dependent segments sit at the top.
         ax.bar(x, c_login_m, w, label="C Login (amortized)", color=colors["vermilion"], edgecolor="black", lw=0.6, hatch="//")
         b = list(c_login_m)
         sub_series = [
@@ -309,7 +300,6 @@ def gen_issue_figure():
         fh.write(tex_content)
 
     handles, labels = axes[0].get_legend_handles_labels()
-    # Legend anchored below x-axis labels
     fig.legend(handles, labels, fontsize=6.8, ncol=6, loc="lower center", bbox_to_anchor=(0.5, 0.005),
                frameon=True, edgecolor="black", columnspacing=1.0, handlelength=2.0, handleheight=1.2, borderpad=0.5)
     plt.subplots_adjust(wspace=0.28, bottom=0.32, left=0.08, right=0.99)
@@ -402,7 +392,6 @@ def gen_verify_figure():
         fh.write(tex_content)
 
     handles, labels = axes[0].get_legend_handles_labels()
-    # Legend anchored close to x-axis labels with minimal vertical spacing
     fig.legend(handles, labels, fontsize=8, ncol=4, loc="lower center", bbox_to_anchor=(0.5, 0.005),
                frameon=True, edgecolor="black", columnspacing=0.8, handlelength=1.2, borderpad=0.5)
     plt.subplots_adjust(wspace=0.28, bottom=0.30, left=0.08, right=0.99)
@@ -485,7 +474,6 @@ def gen_cert_size_figure():
         fh.write(tex_content)
 
     handles, labels = axes[0].get_legend_handles_labels()
-    # Legend anchored close to x-axis labels with minimal vertical spacing
     fig.legend(
         handles, labels,
         loc="lower center", bbox_to_anchor=(0.5, 0.005),
@@ -497,18 +485,6 @@ def gen_cert_size_figure():
     plt.close()
 
 def gen_keygen_figure():
-    # Granular breakdown using PKCS#11 TRACE logging (collect_keygen_trace.sh):
-    #   fw_keygen   = C_GenerateKeyPair (firmware-side crypto, from cs_pkcs11_R3.log)
-    #   c_login     = C_Login            (PKCS#11 session auth, ~45ms TCP handshake)
-    #   pkcs11_find_slot  = slot enumeration (~17ms, 10 slots probed)
-    #   pkcs11_find_key   = post-gen key search
-    #   pkcs11_extract_pub = public key extraction
-    #   main_start - kp_generate = Go runtime startup (~1.5ms)
-    #
-    # The fw_keygen / c_login timers come from the Utimaco middleware TRACE log,
-    # not from qpki's TimeTrack(). They isolate the actual firmware computation
-    # (1.5-15ms) from session setup overhead (~63ms), which the old single
-    # "hsm_keygen" bar conflated.
     kc_keys = {"l1": ["ecdsa-p256", "ml-dsa-44"], "l3": ["ecdsa-p384", "ml-dsa-65"], "l5": ["ecdsa-p521", "ml-dsa-87"]}
     kc_labels = ["ECDSA\nP-256", "ML-DSA\n44", "ECDSA\nP-384", "ML-DSA\n65", "ECDSA\nP-521", "ML-DSA\n87"]
 
@@ -550,8 +526,6 @@ def gen_keygen_figure():
             fk_m[bi] = fkv
             ext_m[bi] = ext
             go_m[bi] = max(0.0, ms - kp) if ms > 0 and kp > 0 else 0.0
-            # Compute go_start std from per-sample difference (main_start - kp_generate)
-            # not from main_start alone (which inherits the full keygen variance).
             if go_m[bi] > 0:
                 ms_raw = load_vals_raw(p, "main_start")
                 kp_raw = load_vals_raw(p, f"kp_generate_hsm_{algo}")
@@ -565,18 +539,12 @@ def gen_keygen_figure():
             tot_m[bi] = ms if ms > 0 else kp
             tot_s[bi] = ms_sd if ms > 0 else kp_sd
 
-        # Residual = main_start - (fw + login + slot + fk + ext + go)
-        # Captures uncaptured C_OpenSession, C_FindObjectsInit, C_GetAttributeValue,
-        # PKCS#11 module load, and other middleware overhead not isolated by TRACE.
         pkcs11_overhead_m = [0.0]*2
         pkcs11_overhead_s = [0.0]*2
         for bi in range(2):
             sum6 = fw_m[bi] + login_m[bi] + slot_m[bi] + fk_m[bi] + ext_m[bi] + go_m[bi]
             pkcs11_overhead_m[bi] = max(0.0, tot_m[bi] - sum6)
 
-        # Stack order (bottom -> top): C_Login, Other PKCS#11 overhead, slot enum,
-        # key find, key extract, Go startup, firmware keygen. Firmware keygen is the
-        # only algorithm-dependent segment and sits at the top for easy comparison.
         b = [0.0, 0.0]
         seg_series = [
              (login_m, "C_Login (auth)",      colors["vermilion"], "//"),

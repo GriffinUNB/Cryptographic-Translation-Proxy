@@ -5,8 +5,6 @@
 
 set -euo pipefail
 
-# Paths are relative to this script's location (measure/), so a fresh checkout
-# reproduces entirely within its own directory.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE="$(cd "$SCRIPT_DIR/.." && pwd)"
 TD="$SCRIPT_DIR/timing_data"
@@ -14,7 +12,6 @@ SAMPLES="${SAMPLES:-1000}"
 WARMUP="${WARMUP:-100}"
 LEVEL="${1:-all}"
 
-# A full run owns all output; single-level runs only replace that level by default.
 if [[ "$LEVEL" == "all" || "${WIPE_DATA:-0}" == "1" ]]; then
   rm -f "$TD"/*.txt
 fi
@@ -163,7 +160,6 @@ collect_level() {
       ctp-pqc-hp)          ca_dir="/ca/pqc-hp" ;;
     esac
      echo "    $key (dir=$ca_dir)..."
-     # Double quotes for sh -c so host expands $ca_dir/$csr/$prof; \$ prevents $(seq) expansion on host
      docker exec -e QPKI_DEBUG=1 "$cont" sh -c "
        for i in \$(seq 1 "$WARMUP"); do
          qpki cert issue --ca-dir '$ca_dir' --csr /tmp/'$csr' --profile '$prof' --out /dev/null --var cn=warmup --ca-passphrase CTPLab2026 > /dev/null 2>&1 || true
@@ -185,7 +181,7 @@ collect_level() {
        count=$(wc -l < "$TD/${level}_issue_${key}_${tag}_ms.txt")
        [ "$count" -eq "$SAMPLES" ] || { echo "FATAL: $level $key $tag sample count=$count"; exit 1; }
      done
-    [ "$key" != "pqchp" ] && restart_hsm  # ponytail: re-keygen outlier in first sample of next entity
+    [ "$key" != "pqchp" ] && restart_hsm
   done
 
   echo "  Verify instrumented..."
@@ -196,7 +192,6 @@ collect_level() {
     key=$(echo $ent | cut -d: -f1); cont=$(echo $ent | cut -d: -f2)
     cert=$(echo $ent | cut -d: -f3); ca=$(echo $ent | cut -d: -f4)
     echo "    $key..."
-    # Remove prior micro timer files so only this run's data remains.
     rm -f "$TD/${level}_${key}_main_start_ms.txt" \
           "$TD/${level}_${key}_verify_"*.txt
     docker exec -e QPKI_DEBUG=1 "$cont" sh -c '
