@@ -1,0 +1,133 @@
+# =============================================================================
+# EC Encryption Certificate Profile (ECDH Key Agreement)
+# =============================================================================
+#
+# Usage: Certificate for encrypting data and messages (CMS, S/MIME)
+#
+# This certificate allows the holder to:
+#   - Receive encrypted content using ECDH key agreement
+#   - Decrypt data using elliptic curve Diffie-Hellman
+#   - Participate in hybrid encryption schemes with PQC
+#
+# Standards: RFC 5280 (X.509), RFC 5652 (CMS), RFC 5753 (ECDH for CMS)
+#
+# Security Level: ~192-bit equivalent (P-384)
+#   ECDH with P-384 provides strong classical security.
+#
+# Quantum Safety: NOT PROTECTED
+#   ECDH is vulnerable to quantum attacks. For quantum resistance,
+#   use ml/encryption or combine with ML-KEM for hybrid encryption.
+#
+# Compatibility: HIGH
+#   Supported by OpenSSL, BouncyCastle, and most CMS implementations.
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile ec/encryption \
+#       --var cn="Alice Smith"
+#
+#   # Using --var-file
+#   pki credential enroll --profile ec/encryption --var-file encryption-vars.yaml
+#
+# Expected DN: CN=Alice Smith, OU=Users, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: ec/encryption
+description: "Encryption certificate ECDH P-384 (classical)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - Recipient identity name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# ECDSA P-384 key for ECDH key agreement
+#   - NIST P-384 curve (~192-bit security)
+#   - Public key: 97 bytes (uncompressed)
+#   - Used for ECDH key agreement in CMS EnvelopedData
+#
+algorithm: ecdsa-p384
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+validity: 365d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "Users"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # keyAgreement: ECDH key agreement for content encryption key derivation
+  #
+  keyUsage:
+    critical: true
+    values:
+      - keyAgreement
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  # No EKU - general purpose encryption certificate.
+  #
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.6.1"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"

@@ -1,0 +1,23 @@
+\begin{table*}[htbp]
+  \centering
+  \caption{\textcolor{red}{Certificate verification micro-timing breakdown (mean $\pm$ SD, ms).}}
+  \label{tab:verify-latency}
+  \begin{tabular}{llrrrrr}
+    \toprule
+    \textbf{Level} & \textbf{Cert} & \textbf{Go Stdlib} & \textbf{CIRCL} & \textbf{Overhead} & \textbf{Go Startup} & \textbf{Total ($\mu \pm \sigma$)} \\
+    \midrule
+  Low Security & C-CA & $0.020 \pm 0.008$ & $-$ & $0.252$ & $0.321 \pm 0.097$ & \textbf{$0.593 \pm 0.117$} \\
+  Low Security & P-CA & $-$ & $0.084 \pm 0.015$ & $0.478$ & $0.321 \pm 0.094$ & \textbf{$0.883 \pm 0.123$} \\
+  Low Security & C-CTP & $0.219 \pm 0.028$ & $0.096 \pm 0.016$ & $0.459$ & $0.318 \pm 0.097$ & \textbf{$1.092 \pm 0.156$} \\
+  Low Security & P-CTP & $0.220 \pm 0.030$ & $0.097 \pm 0.018$ & $0.455$ & $0.317 \pm 0.094$ & \textbf{$1.090 \pm 0.144$} \\
+  Medium Security & C-CA & $0.021 \pm 0.008$ & $-$ & $0.252$ & $0.328 \pm 0.095$ & \textbf{$0.601 \pm 0.110$} \\
+  Medium Security & P-CA & $-$ & $0.099 \pm 0.020$ & $0.538$ & $0.311 \pm 0.097$ & \textbf{$0.948 \pm 0.130$} \\
+  Medium Security & C-CTP & $3.292 \pm 0.396$ & $0.115 \pm 0.020$ & $0.553$ & $0.331 \pm 0.112$ & \textbf{$4.292 \pm 0.444$} \\
+  Medium Security & P-CTP & $3.298 \pm 0.381$ & $0.116 \pm 0.021$ & $0.555$ & $0.333 \pm 0.095$ & \textbf{$4.302 \pm 0.435$} \\
+  High Security & C-CA & $0.021 \pm 0.009$ & $-$ & $0.315$ & $0.326 \pm 0.095$ & \textbf{$0.662 \pm 0.114$} \\
+  High Security & P-CA & $-$ & $0.120 \pm 0.021$ & $0.635$ & $0.322 \pm 0.096$ & \textbf{$1.078 \pm 0.127$} \\
+  High Security & C-CTP & $9.571 \pm 0.540$ & $0.152 \pm 0.028$ & $0.767$ & $0.349 \pm 0.113$ & \textbf{$10.839 \pm 0.579$} \\
+  High Security & P-CTP & $9.543 \pm 0.546$ & $0.152 \pm 0.028$ & $0.770$ & $0.352 \pm 0.105$ & \textbf{$10.817 \pm 0.580$} \\
+    \bottomrule
+  \end{tabular}
+\end{table*}

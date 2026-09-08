@@ -1,0 +1,165 @@
+# =============================================================================
+# SLH-DSA TLS Client Certificate Profile (Hash-Based Post-Quantum)
+# =============================================================================
+#
+# Usage: Client authentication in mTLS with hash-based quantum resistance
+#
+# This certificate allows a user or device to:
+#   - Authenticate to servers using conservative PQC signatures
+#   - Prove identity in mTLS handshakes with hash-based security
+#   - Resist quantum attacks with well-understood cryptographic foundations
+#
+# Standards: FIPS 205 (SLH-DSA/SPHINCS+), RFC 5280 (X.509), RFC 8446 (TLS 1.3)
+#
+# Security Level: NIST Level 1 (~128-bit equivalent)
+#   SLH-DSA-128f is the most efficient SLH-DSA variant.
+#
+# Quantum Safety: FULLY PROTECTED (Conservative)
+#   Hash-based signatures rely ONLY on hash function security.
+#   No structured mathematical problems that could be broken by new attacks.
+#
+# When to Use SLH-DSA vs ML-DSA:
+#   - SLH-DSA: Maximum conservatism, well-understood security
+#   - ML-DSA: Better performance, smaller signatures
+#   Choose based on your security/performance requirements.
+#
+# Compatibility Warning:
+#   Pure SLH-DSA certificates require PQC-capable TLS implementations.
+#   Not compatible with standard browsers/servers yet.
+#   For backward compatibility, use hybrid/catalyst/tls-client instead.
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile slh/tls-client \
+#       --var cn="alice@acme.example.com" \
+#       --var email="alice@acme.example.com"
+#
+#   # Using --var-file
+#   pki credential enroll --profile slh/tls-client --var-file client-vars.yaml
+#
+# Expected DN: CN=alice@acme.example.com, OU=Users, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: slh/tls-client
+description: "TLS client SLH-DSA-128f (hash-based, conservative PQC)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - User or device identifier"
+
+  email:
+    type: string
+    required: false
+    pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+    description: "RFC 822 email address (optional)"
+
+  serial_number:
+    type: string
+    required: false
+    description: "Device serial number for hardware authentication"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# SLH-DSA-128f (FIPS 205) - NIST Level 1
+#   - ~128-bit equivalent security
+#   - "f" = fast variant
+#   - Public key: ~32 bytes, Signature: ~17,088 bytes
+#
+algorithm: slh-dsa-sha2-128f
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+validity: 365d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "Users"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # digitalSignature: SLH-DSA signs TLS handshake for client auth
+  #
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  extKeyUsage:
+    critical: false
+    values:
+      - clientAuth
+
+  # Subject Alternative Name (RFC 5280 Section 4.2.1.6)
+  # ---------------------------------------------------------------------------
+  subjectAltName:
+    critical: false
+    email: "{{ email }}"
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.3.3"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca-slh.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca-slh.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# SLH-DSA signatures are intrinsic to the algorithm (no override needed)

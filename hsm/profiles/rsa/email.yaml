@@ -1,0 +1,132 @@
+# =============================================================================
+# RSA Email (S/MIME) Certificate Profile
+# =============================================================================
+#
+# Usage: S/MIME email signing and encryption with RSA
+#
+# This certificate allows a user to:
+#   - Sign and encrypt emails with RSA
+#   - Work with all email clients (Outlook, Thunderbird, Apple Mail)
+#   - Provide both signing and encryption in one certificate
+#
+# Standards: RFC 5280 (X.509), RFC 8550 (S/MIME 4.0)
+#
+# Security Level: ~112-bit (RSA-2048)
+#
+# Quantum Safety: VULNERABLE
+#   RSA is vulnerable to Cryptographically Relevant Quantum Computers (CRQC).
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile rsa/email \
+#       --var cn="Alice Smith" \
+#       --var email=alice@acme.example.com
+#
+#   # Using --var-file
+#   pki credential enroll --profile rsa/email --var-file email-vars.yaml
+#
+# Expected DN: CN=Alice Smith, OU=Users, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: rsa/email
+description: "Email (S/MIME) certificate RSA 2048-bit"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - User's name"
+
+  email:
+    type: string
+    required: true
+    pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+    description: "RFC 822 email address (required for S/MIME)"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+algorithm: rsa-2048
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+validity: 365d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "Users"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  basicConstraints:
+    critical: true
+    ca: false
+
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+      - keyEncipherment
+
+  extKeyUsage:
+    critical: false
+    values:
+      - emailProtection
+
+  subjectAltName:
+    critical: false
+    email: "{{ email }}"
+
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.1.1"
+        cps: "https://pki.acme.example.com/cps"
+
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca-rsa.crl"
+
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca-rsa.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# Defaults: scheme=rsassa-pss, hash=sha256
+# For legacy compatibility, override with:
+#   signature:
+#     scheme: pkcs1v15
+#     hash: sha256

@@ -1,0 +1,19 @@
+# =============================================================================
+# Example: Root CA Initialization Variables
+# =============================================================================
+#
+# Usage:
+#   qpki ca init --profile ec/root-ca --var-file examples/root-ca-vars.yaml --ca-dir ./my-ca
+#   qpki ca init --profile ml/root-ca --var-file examples/root-ca-vars.yaml --ca-dir ./pqc-ca
+#   qpki ca init --profile hybrid/catalyst/root-ca --var-file examples/root-ca-vars.yaml --ca-dir ./hybrid-ca
+#
+# =============================================================================
+
+# Required: CA common name
+cn: "My Root CA"
+
+# Optional: Organization name (default: "ACME Corp")
+organization: "My Company"
+
+# Optional: ISO 3166-1 alpha-2 country code (default: "US")
+country: "FR"

@@ -1,0 +1,161 @@
+# =============================================================================
+# ML-DSA Timestamping Certificate Profile (Pure Post-Quantum)
+# =============================================================================
+#
+# Usage: RFC 3161 Timestamping Authority with quantum-resistant signatures
+#
+# This certificate allows the TSA to:
+#   - Issue trusted timestamps with post-quantum signatures
+#   - Extend validity of signed documents beyond signer's certificate expiration
+#   - Provide quantum-safe proof of document existence at specific time
+#
+# Standards: FIPS 204 (ML-DSA), RFC 3161 (TSA), RFC 5280 (X.509)
+#
+# Security Level: NIST Level 3 (~192-bit equivalent)
+#   ML-DSA-65 provides strong security with good signing performance.
+#
+# Quantum Safety: FULLY PROTECTED
+#   Pure PQC signature - safe against quantum attacks.
+#   Critical for timestamps that must remain valid for decades.
+#
+# Why Quantum Safety Matters for Timestamping:
+#   Timestamps prove that data existed at a specific time.
+#   Legal and compliance requirements may require timestamp validity
+#   for 10+ years. A quantum computer could forge timestamps,
+#   backdating malicious documents. ML-DSA protects against this.
+#
+# Important: Timestamping certificates MUST have:
+#   - extKeyUsage: timeStamping ONLY (no other EKUs)
+#   - extKeyUsage: CRITICAL (per RFC 3161 Section 2.3)
+#
+# Compatibility Warning:
+#   Pure ML-DSA timestamps require PQC-capable verification tools.
+#   Not compatible with standard TSA clients yet.
+#   For backward compatibility, use ec/timestamping instead.
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile ml/timestamping \
+#       --var cn="ACME TSA PQC"
+#
+#   # Using --var-file
+#   pki credential enroll --profile ml/timestamping --var-file tsa-vars.yaml
+#
+# Expected DN: CN=ACME TSA PQC, OU=PKI Services, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: ml/timestamping
+description: "Timestamping certificate ML-DSA-65 (RFC 3161 + RFC 9882)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - TSA service name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# ML-DSA-65 (FIPS 204) - NIST Level 3
+#   - ~192-bit equivalent security
+#   - Good performance for high-volume timestamp signing
+#   - Public key: ~1952 bytes, Signature: ~3309 bytes
+#
+algorithm: ml-dsa-65
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 3 years (1095 days) for TSA certificates.
+# Longer than typical end-entity certs because:
+#   - Timestamps extend document validity
+#   - TSA infrastructure changes are disruptive
+#
+validity: 1095d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "PKI Services"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # digitalSignature: Required for signing timestamp tokens
+  #
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  # timeStamping (OID 1.3.6.1.5.5.7.3.8): RFC 3161 timestamping
+  # CRITICAL: RFC 3161 Section 2.3 requires this to be critical
+  # EXCLUSIVE: No other EKUs allowed per RFC 3161
+  #
+  extKeyUsage:
+    critical: true            # MUST be critical per RFC 3161
+    values:
+      - timeStamping          # ONLY timeStamping allowed
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.5.2"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca-pqc.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca-pqc.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# ML-DSA signatures are intrinsic to the algorithm (no override needed)

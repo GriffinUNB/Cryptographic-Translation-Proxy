@@ -1,0 +1,30 @@
+# =============================================================================
+# Example: TLS Server Certificate Variables
+# =============================================================================
+#
+# Usage:
+#   qpki credential enroll --profile ec/tls-server --var-file examples/tls-server-vars.yaml
+#   qpki credential enroll --profile ml/tls-server-sign --var-file examples/tls-server-vars.yaml
+#   qpki credential enroll --profile hybrid/catalyst/tls-server --var-file examples/tls-server-vars.yaml
+#
+# =============================================================================
+
+# Required: Server's primary FQDN (wildcards allowed)
+cn: api.example.com
+
+# Optional: Additional DNS names for Subject Alternative Name
+dns_names:
+  - api.example.com
+  - api-v2.example.com
+  - "*.api.example.com"
+
+# Optional: IP addresses for Subject Alternative Name
+ip_addresses:
+  - 192.168.1.100
+  - 10.0.0.50
+
+# Optional: Organization name (default: "ACME Corp")
+organization: "My Company"
+
+# Optional: ISO 3166-1 alpha-2 country code (default: "US")
+country: "FR"

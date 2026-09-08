@@ -1,0 +1,143 @@
+# =============================================================================
+# Hybrid Catalyst Issuing CA Certificate Profile (ECDSA P-256 + ML-DSA-65)
+# =============================================================================
+#
+# Usage: Intermediate CA with quantum-safe transition capability
+#
+# This CA provides:
+#   - Online certificate issuance with hybrid signatures
+#   - Backward compatibility for classical clients
+#   - Quantum resistance for PQC-aware clients
+#
+# Standards: ITU-T X.509 Section 9.8 (Catalyst), FIPS 204 (ML-DSA)
+#
+# Security Level:
+#   - Classical: ~128-bit (ECDSA P-256)
+#   - PQC: NIST Level 3 (ML-DSA-65, ~192-bit equivalent)
+#
+# Quantum Safety: PROTECTED (Hybrid)
+#   Both classical and PQC signatures protect the certificate.
+#
+# Catalyst Mode (ITU-T X.509 Section 9.8):
+#   Two independent signatures in a single certificate:
+#   - ECDSA P-256 in standard signature field
+#   - ML-DSA-65 in altSignatureValue extension
+#
+# Examples:
+#
+#   # Using --var
+#   pki ca init --profile hybrid/catalyst/issuing-ca --ca-dir ./issuing-ca-hybrid \
+#       --var cn="ACME Issuing CA Hybrid" \
+#       --parent ./root-ca-hybrid
+#
+#   # Using --var-file
+#   pki ca init --profile hybrid/catalyst/issuing-ca --ca-dir ./issuing-ca-hybrid --var-file ca-vars.yaml --parent ./root-ca-hybrid
+#
+# Expected DN: CN=ACME Issuing CA Hybrid, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: hybrid/catalyst/issuing-ca
+description: "Issuing CA hybrid ECDSA P-256 + ML-DSA-65 (PQC transition)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - Issuing CA name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithms
+# -----------------------------------------------------------------------------
+# P-256 + ML-DSA-65 is the recommended combination for Issuing CA:
+#   - P-256: Fast, widely supported, ~128-bit security
+#   - ML-DSA-65: NIST Level 3, good balance of security and performance
+#
+algorithms:
+  - ecdsa-p256              # Classical: ~128-bit security
+  - ml-dsa-65               # PQC: NIST Level 3 (~192-bit equivalent)
+
+# -----------------------------------------------------------------------------
+# Hybrid Mode: Catalyst
+# -----------------------------------------------------------------------------
+mode: catalyst
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 10 years for Issuing CA.
+# Shorter than Root CA to allow algorithm migration.
+#
+validity: 3650d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: true
+    pathLen: 0                # End-entity certificates only
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  keyUsage:
+    critical: true
+    values:
+      - keyCertSign
+      - cRLSign
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.0.4"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/root-ca-hybrid.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/root-ca-hybrid.crt"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# Dual signatures: ecdsa(sha384) + ML-DSA (intrinsic)
+# Classical clients verify ECDSA, PQC-aware clients verify both.

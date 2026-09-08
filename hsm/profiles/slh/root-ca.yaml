@@ -1,0 +1,144 @@
+# =============================================================================
+# SLH-DSA Root CA Certificate Profile (Hash-Based Post-Quantum)
+# =============================================================================
+#
+# Usage: Root CA (trust anchor) with hash-based quantum resistance
+#
+# This certificate provides:
+#   - Complete protection against quantum computer attacks
+#   - Conservative cryptographic assumptions (hash function security only)
+#   - Maximum long-term security for offline trust anchor
+#
+# Standards: FIPS 205 (SLH-DSA/SPHINCS+), RFC 5280 (X.509)
+#
+# Security Level: NIST Level 5 (~256-bit equivalent)
+#   SLH-DSA-256f is the strongest SLH-DSA variant.
+#   "f" suffix means "fast" variant (smaller signatures, faster signing).
+#
+# Quantum Safety: FULLY PROTECTED (Conservative)
+#   Hash-based signatures rely ONLY on hash function security.
+#   No structured mathematical problems (unlike lattice-based ML-DSA).
+#   Considered the most conservative post-quantum signature scheme.
+#
+# Why SLH-DSA for Root CA:
+#   - Root CAs are offline and sign infrequently
+#   - Larger signature sizes are acceptable for trust anchors
+#   - Conservative security assumptions for 20+ year lifespan
+#   - Hash-based security well-understood by cryptographers
+#
+# Key/Signature Sizes:
+#   - Public key: ~64 bytes
+#   - Signature: ~29,792 bytes (256f variant)
+#   - Much larger than ML-DSA but acceptable for Root CA
+#
+# Compatibility Warning:
+#   Pure PQC certificates are NOT compatible with existing PKI software.
+#   Most applications cannot verify SLH-DSA signatures yet.
+#   For backward compatibility, use hybrid/catalyst/root-ca instead.
+#
+# Examples:
+#
+#   # Using --var
+#   pki ca init --profile slh/root-ca --ca-dir ./root-ca-slh \
+#       --var cn="ACME Root CA SLH-DSA"
+#
+#   # Using --var-file
+#   pki ca init --profile slh/root-ca --ca-dir ./root-ca-slh --var-file ca-vars.yaml
+#
+# Expected DN: CN=ACME Root CA SLH-DSA, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: slh/root-ca
+description: "Root CA SLH-DSA-256f (hash-based, NIST security level 5)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - Root CA name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# SLH-DSA-256f (FIPS 205) - Stateless Hash-Based Digital Signature Algorithm
+#   - NIST Level 5 security (~256-bit equivalent)
+#   - "f" = fast variant (optimized for speed, larger signatures)
+#   - Public key: ~64 bytes, Signature: ~29,792 bytes
+#   - Conservative: security relies only on hash function
+#
+algorithm: slh-dsa-sha2-256f
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 20 years for Root CA.
+# SLH-DSA's conservative security is ideal for long-term trust anchors.
+#
+validity: 7300d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  # ca: true - This is a CA certificate
+  # pathLen: 1 - Can issue one level of sub-CAs
+  #
+  basicConstraints:
+    critical: true
+    ca: true
+    pathLen: 1
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # keyCertSign: Required to sign certificates
+  # cRLSign: Required to sign CRLs
+  #
+  keyUsage:
+    critical: true
+    values:
+      - keyCertSign
+      - cRLSign
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "2.5.29.32.0"
+        cps: "https://pki.acme.example.com/cps"
+        userNotice: "ACME Corp Root CA - Hash-Based Post-Quantum (SLH-DSA-256f)"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# SLH-DSA signatures are intrinsic to the algorithm (no override needed)

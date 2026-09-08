@@ -1,0 +1,24 @@
+\begin{table*}[htbp]
+  \centering
+  \caption{\textcolor{red}{Certificate issuance micro-timing breakdown (mean $\pm$ SD, ms).}}
+  \label{tab:issue-latency}
+  \scriptsize\setlength{\tabcolsep}{1.5pt}
+  \begin{tabular}{llrrrrrrrrrrrr}
+    \toprule
+    \textbf{Level} & \textbf{Cert} & \textbf{C Login} & \textbf{Other Sign} & \textbf{HSM Sign} & \textbf{Cat OH} & \textbf{Hyb Proc} & \textbf{Prof Load} & \textbf{P11 Mod} & \textbf{Sess Srch} & \textbf{Key Extr} & \textbf{Int Ovhd} & \textbf{Go Start} & \textbf{Total ($\mu \pm \sigma$)} \\
+    \midrule
+  Low Security & C-CA & $42.10 \pm 1.92$ & $1.71$ & $0.95 \pm 0.19$ & $-$ & $-$ & $16.27 \pm 0.98$ & $0.02$ & $3.12$ & $2.54$ & $2.92$ & $1.53 \pm 0.17$ & \textbf{$71.17 \pm 2.76$} \\
+  Low Security & P-CA & $42.18 \pm 3.27$ & $-$ & $2.10 \pm 0.79$ & $-$ & $4.35 \pm 0.79$ & $16.34 \pm 1.00$ & $0.01$ & $3.21$ & $1.39$ & $-$ & $1.55 \pm 0.17$ & \textbf{$71.13 \pm 5.66$} \\
+  Low Security & C-CTP & $42.28 \pm 2.12$ & $1.73$ & $1.22 \pm 0.61$ & $0.73$ & $0.72 \pm 0.08$ & $16.36 \pm 1.09$ & $0.01$ & $4.28$ & $3.36$ & $5.16$ & $1.57 \pm 0.19$ & \textbf{$77.43 \pm 3.42$} \\
+  Low Security & P-CTP & $42.20 \pm 2.52$ & $1.76$ & $1.26 \pm 0.69$ & $0.74$ & $0.72 \pm 0.07$ & $16.31 \pm 1.02$ & $0.01$ & $4.28$ & $3.41$ & $5.29$ & $1.56 \pm 0.18$ & \textbf{$77.52 \pm 4.74$} \\
+  Medium Security & C-CA & $42.43 \pm 2.35$ & $1.73$ & $1.62 \pm 0.25$ & $-$ & $-$ & $16.41 \pm 1.25$ & $0.01$ & $3.15$ & $2.59$ & $3.65$ & $1.57 \pm 0.20$ & \textbf{$73.16 \pm 3.42$} \\
+  Medium Security & P-CA & $42.13 \pm 1.97$ & $-$ & $2.84 \pm 1.20$ & $-$ & $5.83 \pm 1.21$ & $16.34 \pm 1.11$ & $0.01$ & $3.14$ & $1.62$ & $-$ & $1.56 \pm 0.17$ & \textbf{$73.45 \pm 2.99$} \\
+  Medium Security & C-CTP & $42.28 \pm 3.29$ & $1.72$ & $1.91 \pm 0.80$ & $2.31$ & $0.90 \pm 0.09$ & $16.34 \pm 1.17$ & $0.01$ & $4.41$ & $3.65$ & $6.54$ & $1.59 \pm 0.20$ & \textbf{$81.68 \pm 4.24$} \\
+  Medium Security & P-CTP & $41.99 \pm 1.72$ & $1.71$ & $1.91 \pm 0.78$ & $2.31$ & $0.89 \pm 0.09$ & $16.28 \pm 0.97$ & $0.01$ & $4.34$ & $3.64$ & $6.49$ & $1.60 \pm 0.19$ & \textbf{$81.17 \pm 2.91$} \\
+  High Security & C-CA & $42.20 \pm 2.21$ & $1.73$ & $3.35 \pm 0.39$ & $-$ & $-$ & $16.31 \pm 1.07$ & $0.01$ & $3.16$ & $2.63$ & $12.43$ & $1.70 \pm 0.18$ & \textbf{$83.52 \pm 3.37$} \\
+  High Security & P-CA & $42.20 \pm 2.15$ & $-$ & $3.32 \pm 1.19$ & $-$ & $6.87 \pm 1.20$ & $16.27 \pm 0.98$ & $0.01$ & $3.15$ & $1.83$ & $-$ & $1.59 \pm 0.17$ & \textbf{$75.23 \pm 2.90$} \\
+  High Security & C-CTP & $42.21 \pm 2.58$ & $1.72$ & $3.28 \pm 0.73$ & $12.78$ & $1.13 \pm 0.11$ & $16.23 \pm 1.08$ & $0.01$ & $4.37$ & $3.84$ & $9.39$ & $1.64 \pm 0.19$ & \textbf{$96.61 \pm 3.84$} \\
+  High Security & P-CTP & $45.09 \pm 7.28$ & $1.97$ & $3.60 \pm 1.00$ & $13.64$ & $1.23 \pm 0.23$ & $18.08 \pm 3.39$ & $0.01$ & $4.88$ & $4.13$ & $10.34$ & $1.87 \pm 0.40$ & \textbf{$104.84 \pm 14.14$} \\
+    \bottomrule
+  \end{tabular}
+\end{table*}

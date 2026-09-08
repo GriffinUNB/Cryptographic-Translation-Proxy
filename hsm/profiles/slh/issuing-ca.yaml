@@ -1,0 +1,143 @@
+# =============================================================================
+# SLH-DSA Issuing CA Certificate Profile (Hash-Based Post-Quantum)
+# =============================================================================
+#
+# Usage: Intermediate CA with hash-based quantum resistance
+#
+# This certificate allows the Issuing CA to:
+#   - Issue end-entity certificates with conservative PQC signatures
+#   - Sign CRLs (Certificate Revocation Lists)
+#   - Operate as subordinate to an SLH-DSA Root CA
+#
+# Standards: FIPS 205 (SLH-DSA/SPHINCS+), RFC 5280 (X.509)
+#
+# Security Level: NIST Level 3 (~192-bit equivalent)
+#   SLH-DSA-192f provides strong security with better performance than 256f.
+#
+# Quantum Safety: FULLY PROTECTED (Conservative)
+#   Hash-based signatures rely ONLY on hash function security.
+#   Most conservative post-quantum signature approach.
+#
+# Performance Consideration:
+#   SLH-DSA signing is slower than ML-DSA.
+#   For high-volume issuance, consider ML-DSA instead.
+#   SLH-DSA is better suited for lower-volume, high-assurance scenarios.
+#
+# Path Length: 0
+#   This CA can only issue end-entity certificates, not other CAs.
+#
+# Compatibility Warning:
+#   Pure PQC certificates are NOT compatible with existing PKI software.
+#   For backward compatibility, use hybrid/catalyst/issuing-ca instead.
+#
+# Examples:
+#
+#   # Using --var
+#   pki ca init --profile slh/issuing-ca --ca-dir ./issuing-ca-slh \
+#       --var cn="ACME Issuing CA SLH-DSA" \
+#       --parent ./root-ca-slh
+#
+#   # Using --var-file
+#   pki ca init --profile slh/issuing-ca --ca-dir ./issuing-ca-slh --var-file ca-vars.yaml --parent ./root-ca-slh
+#
+# Expected DN: CN=ACME Issuing CA SLH-DSA, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: slh/issuing-ca
+description: "Issuing CA SLH-DSA-192f (hash-based, NIST security level 3)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - Issuing CA name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# SLH-DSA-192f (FIPS 205) - Stateless Hash-Based Digital Signature Algorithm
+#   - NIST Level 3 security (~192-bit equivalent)
+#   - "f" = fast variant (optimized for speed)
+#   - Public key: ~48 bytes, Signature: ~16,224 bytes
+#
+algorithm: slh-dsa-sha2-192f
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 10 years for Issuing CA.
+#
+validity: 3650d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: true
+    pathLen: 0
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  keyUsage:
+    critical: true
+    values:
+      - keyCertSign
+      - cRLSign
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.0.3"
+        cps: "https://pki.acme.example.com/cps"
+        userNotice: "ACME Corp Issuing CA Certificate Policy (SLH-DSA)"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/root-ca-slh.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/root-ca-slh.crt"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# SLH-DSA signatures are intrinsic to the algorithm (no override needed)

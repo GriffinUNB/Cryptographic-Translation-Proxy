@@ -1,0 +1,6 @@
+type: pkcs11
+
+pkcs11:
+  lib: /opt/utimaco/p11/libcs_pkcs11_R3.so
+  slot: 0
+  pin_env: HSM_PIN

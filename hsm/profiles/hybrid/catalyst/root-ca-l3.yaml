@@ -1,0 +1,146 @@
+# =============================================================================
+# Hybrid Catalyst Root CA Certificate Profile (ECDSA P-384 + ML-DSA-65)
+# =============================================================================
+#
+# Usage: Root CA (trust anchor) with quantum-safe transition capability
+#
+# This certificate provides:
+#   - Backward compatibility with classical PKI (ECDSA signature)
+#   - Future-proof quantum resistance (ML-DSA signature)
+#   - Seamless migration path to post-quantum cryptography
+#
+# Standards: ITU-T X.509 Section 9.8 (Catalyst), FIPS 204 (ML-DSA)
+#
+# Security Level:
+#   - Classical: ~192-bit (ECDSA P-384)
+#   - PQC: NIST Level 3 (ML-DSA-65, ~192-bit equivalent)
+#
+# Quantum Safety: PROTECTED (Hybrid)
+#   - Classical clients: Verify ECDSA, ignore ML-DSA extension
+#   - PQC-aware clients: Verify BOTH signatures for full security
+#   - "Harvest now, decrypt later" attacks mitigated by ML-DSA
+#
+# Catalyst Mode (ITU-T X.509 Section 9.8):
+#   The certificate contains two independent key pairs and signatures:
+#   - Primary: ECDSA P-384 (standard X.509 signature)
+#   - Alternative: ML-DSA-65 (in altSignatureAlgorithm extension)
+#   Both signatures cover the same TBS (To-Be-Signed) certificate data.
+#
+# Examples:
+#
+#   # Using --var
+#   pki ca init --profile hybrid/catalyst/root-ca --ca-dir ./root-ca-hybrid \
+#       --var cn="ACME Root CA Hybrid"
+#
+#   # Using --var-file
+#   pki ca init --profile hybrid/catalyst/root-ca --ca-dir ./root-ca-hybrid --var-file ca-vars.yaml
+#
+# Expected DN: CN=ACME Root CA Hybrid, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: hybrid/catalyst/root-ca-l3
+description: "Root CA hybrid ECDSA P-384 + ML-DSA-65 (PQC transition)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - Root CA name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithms
+# -----------------------------------------------------------------------------
+# First algorithm: Classical (ECDSA P-384)
+#   - ~192-bit security, stronger than P-256 for long-lived Root CA
+#   - Verified by all existing PKI software
+#
+# Second algorithm: PQC (ML-DSA-65)
+#   - NIST Level 3 security (~192-bit equivalent)
+#   - Strongest ML-DSA variant for maximum Root CA protection
+#   - Verified by PQC-aware clients
+#
+algorithms:
+  - ecdsa-p384              # Classical: ~192-bit security
+  - ml-dsa-65               # PQC: NIST Level 3 (~192-bit equivalent)
+
+# -----------------------------------------------------------------------------
+# Hybrid Mode: Catalyst (ITU-T X.509 Section 9.8)
+# -----------------------------------------------------------------------------
+# Catalyst certificates contain two key pairs:
+#   - Classical key: Used for standard X.509 signature
+#   - PQC key: Stored in subjectAltPublicKeyInfo extension
+#
+# Both keys sign the certificate, providing dual protection.
+#
+mode: catalyst
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 20 years for Root CA.
+# Long validity is acceptable because hybrid approach allows algorithm upgrade
+# via issuing CA replacement without Root CA re-issuance.
+#
+validity: 7300d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: true
+    pathLen: 1                # Can sign one level of subordinate CAs
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  keyUsage:
+    critical: true
+    values:
+      - keyCertSign           # Sign certificates
+      - cRLSign               # Sign CRLs
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "2.5.29.32.0"    # anyPolicy
+        cps: "https://pki.acme.example.com/cps"
+        userNotice: "ACME Corp Root CA - Hybrid Catalyst (ECDSA + ML-DSA)"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# Dual signatures: ecdsa(sha384) + ML-DSA (intrinsic)
+# Classical clients verify ECDSA, PQC-aware clients verify both.

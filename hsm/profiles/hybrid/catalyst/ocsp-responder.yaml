@@ -1,0 +1,152 @@
+# =============================================================================
+# Hybrid Catalyst OCSP Responder Certificate Profile (ECDSA P-384 + ML-DSA-65)
+# =============================================================================
+#
+# Usage: OCSP responder with quantum-safe protection (RFC 6960)
+#
+# This certificate allows the OCSP responder to:
+#   - Sign responses verifiable by classical clients (ECDSA)
+#   - Sign responses verifiable by PQC-aware clients (both signatures)
+#   - Provide real-time revocation status with quantum protection
+#
+# Standards: RFC 6960 (OCSP), ITU-T X.509 Section 9.8 (Catalyst), FIPS 204
+#
+# Security Level:
+#   - Classical: ~192-bit (ECDSA P-384)
+#   - PQC: NIST Level 3 (ML-DSA-65)
+#
+# Quantum Safety: PROTECTED (Hybrid)
+#   OCSP responses must be trustworthy even against future quantum attacks.
+#   A forged OCSP response could make a revoked certificate appear valid.
+#
+# Delegated Responder:
+#   This certificate enables a delegated OCSP responder (signed by issuing CA).
+#   The ocspNoCheck extension prevents recursive OCSP lookups.
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile hybrid/catalyst/ocsp-responder \
+#       --var cn="ACME Hybrid OCSP"
+#
+#   # Using --var-file
+#   pki credential enroll --profile hybrid/catalyst/ocsp-responder --var-file ocsp-vars.yaml
+#
+# Expected DN: CN=ACME Hybrid OCSP, OU=PKI Services, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: hybrid/catalyst/ocsp-responder
+description: "OCSP Responder hybrid ECDSA P-384 + ML-DSA-65 (Catalyst)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - OCSP service name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithms
+# -----------------------------------------------------------------------------
+# P-384 + ML-DSA-65 for PKI infrastructure protection:
+#   - P-384: Stronger classical security for critical service
+#   - ML-DSA-65: Quantum resistance
+#
+algorithms:
+  - ecdsa-p384              # Classical: ~192-bit security
+  - ml-dsa-65               # PQC: NIST Level 3
+
+# -----------------------------------------------------------------------------
+# Hybrid Mode: Catalyst
+# -----------------------------------------------------------------------------
+mode: catalyst
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+validity: 365d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "PKI Services"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  extKeyUsage:
+    critical: true
+    values:
+      - ocspSigning
+
+  # OCSP No Check (RFC 6960 Section 4.2.2.2.1)
+  # ---------------------------------------------------------------------------
+  # Prevents infinite recursion when checking OCSP responder status.
+  #
+  ocspNoCheck:
+    critical: false
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.6.3"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca-hybrid.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca-hybrid.crt"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# Dual signatures: ecdsa(sha384) + ML-DSA (intrinsic)
+# Classical clients verify ECDSA, PQC-aware clients verify both.

@@ -1,0 +1,147 @@
+# =============================================================================
+# Hybrid Composite Issuing CA Certificate Profile (IETF Format)
+# =============================================================================
+#
+# Usage: Intermediate CA with IETF composite hybrid signatures
+#
+# This certificate allows the Issuing CA to:
+#   - Issue end-entity certificates with composite signatures
+#   - Sign CRLs with dual-algorithm protection
+#   - Require BOTH signature validations for all operations
+#
+# Standards: IETF draft-ietf-lamps-pq-composite-sigs-13 (DRAFT), RFC 5280 (X.509)
+#
+# Security Level:
+#   - Classical: ~128-bit (ECDSA P-256)
+#   - PQC: NIST Level 3 (~256-bit equivalent, ML-DSA-65)
+#
+# Quantum Safety: PROTECTED (Composite Hybrid)
+#   Both signatures MUST validate for certificate to be trusted.
+#
+# Composite Mode (IETF draft-ietf-lamps-pq-composite-sigs-13 (DRAFT)):
+#   - Single composite public key containing both ECDSA and ML-DSA keys
+#   - Single composite signature containing both signatures
+#   - Verifier MUST successfully verify BOTH signatures
+#   - If either signature fails, entire validation fails
+#
+# Path Length: 0
+#   This CA can only issue end-entity certificates, not other CAs.
+#
+# Compatibility Warning:
+#   Composite certificates require composite-aware verifiers.
+#   For backward compatibility, use hybrid/catalyst/issuing-ca instead.
+#
+# Examples:
+#
+#   # Using --var
+#   pki ca init --profile hybrid/composite/issuing-ca --ca-dir ./issuing-ca-composite \
+#       --var cn="ACME Issuing CA Composite" \
+#       --parent ./root-ca-composite
+#
+#   # Using --var-file
+#   pki ca init --profile hybrid/composite/issuing-ca --ca-dir ./issuing-ca-composite --var-file ca-vars.yaml --parent ./root-ca-composite
+#
+# Expected DN: CN=ACME Issuing CA Composite, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: hybrid/composite/issuing-ca
+description: "Issuing CA hybrid composite ECDSA P-256 + ML-DSA-65 (IETF format)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - Issuing CA name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithms
+# -----------------------------------------------------------------------------
+algorithms:
+  - ecdsa-p256              # Classical: ~128-bit security
+  - ml-dsa-65               # PQC: NIST Level 3
+
+# -----------------------------------------------------------------------------
+# Hybrid Mode: Composite (IETF)
+# -----------------------------------------------------------------------------
+mode: composite
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 10 years for Issuing CA.
+#
+validity: 3650d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: true
+    pathLen: 0
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  keyUsage:
+    critical: true
+    values:
+      - keyCertSign
+      - cRLSign
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.0.5"
+        cps: "https://pki.acme.example.com/cps"
+        userNotice: "ACME Corp Issuing CA - Hybrid Composite (IETF format)"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/root-ca-composite.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/root-ca-composite.crt"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# Composite signature: ecdsa(sha384) + ML-DSA combined
+# Both signatures must validate for the certificate to be trusted.

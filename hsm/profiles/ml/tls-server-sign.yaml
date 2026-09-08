@@ -1,0 +1,171 @@
+# =============================================================================
+# ML-DSA TLS Server Signature Certificate Profile (Pure Post-Quantum)
+# =============================================================================
+#
+# Usage: TLS server authentication with quantum-resistant signatures
+#
+# This certificate allows a server to:
+#   - Authenticate using post-quantum signatures (ML-DSA)
+#   - Prove identity to PQC-capable TLS clients
+#   - Resist quantum computer attacks on authentication
+#
+# Standards: FIPS 204 (ML-DSA), RFC 5280 (X.509)
+#
+# Security Level: NIST Level 3 (~192-bit equivalent)
+#   ML-DSA-65 provides strong security with reasonable performance.
+#
+# Quantum Safety: FULLY PROTECTED
+#   Pure PQC signature - safe against quantum attacks.
+#
+# Dual Certificate Pattern:
+#   For complete PQC TLS, use two certificates:
+#   1. ml/tls-server-sign (this profile) - Authentication
+#   2. ml/tls-server-encrypt - Key encapsulation
+#
+# Compatibility Warning:
+#   Pure ML-DSA certificates require PQC-capable TLS implementations.
+#   Not compatible with standard browsers/clients yet.
+#   For backward compatibility, use hybrid/catalyst/tls-server instead.
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile ml/tls-server-sign \
+#       --var cn="api.acme.example.com" \
+#       --var dns_names="api.acme.example.com,api-v2.acme.example.com"
+#
+#   # Using --var-file
+#   pki credential enroll --profile ml/tls-server-sign --var-file server-vars.yaml
+#
+# Expected DN: CN=api.acme.example.com, OU=Servers, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: ml/tls-server-sign
+description: "TLS server signature ML-DSA-65 (post-quantum authentication)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: dns_name
+    required: true
+    wildcard:
+      allowed: true
+    description: "Common Name - Server's primary FQDN (wildcards allowed)"
+
+  dns_names:
+    type: dns_names
+    required: false
+    default: []
+    wildcard:
+      allowed: true
+    description: "DNS Subject Alternative Names (wildcards allowed)"
+
+  ip_addresses:
+    type: ip_list
+    required: false
+    default: []
+    description: "IP Address Subject Alternative Names"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# ML-DSA-65 (FIPS 204) - NIST Level 3
+#   - ~192-bit equivalent security
+#   - Good balance of security and performance
+#   - Public key: ~1952 bytes, Signature: ~3309 bytes
+#
+algorithm: ml-dsa-65
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+validity: 365d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "Servers"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # digitalSignature: ML-DSA signs TLS handshake
+  #
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  extKeyUsage:
+    critical: false
+    values:
+      - serverAuth
+
+  # Subject Alternative Name (RFC 5280 Section 4.2.1.6)
+  # ---------------------------------------------------------------------------
+  subjectAltName:
+    critical: false
+    dns: "{{ dns_names }}"
+    ip: "{{ ip_addresses }}"
+    dns_include_cn: true
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.2.2"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca-pqc.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca-pqc.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# ML-DSA signatures are intrinsic to the algorithm (no override needed)

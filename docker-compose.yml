@@ -1,0 +1,167 @@
+volumes:
+  vol-shared:
+  vol-certs:
+
+networks:
+  net-lab:
+    driver: bridge
+
+x-entity-env: &entity-env
+  HSM_PIN: UserPwd1234!X
+  CA_PASSPHRASE: CTPLab2026
+  # Profile selection (override per level):
+  CLASSICAL_ROOT_PROFILE: ${CLASSICAL_ROOT_PROFILE:-ec/root-ca}
+  CLASSICAL_ISSUING_PROFILE: ${CLASSICAL_ISSUING_PROFILE:-ec/issuing-ca}
+  PQC_ROOT_PROFILE: ${PQC_ROOT_PROFILE:-ml/root-ca}
+  PQC_ISSUING_PROFILE: ${PQC_ISSUING_PROFILE:-ml/issuing-ca}
+
+x-proxy-env: &proxy-env
+  CA_PASSPHRASE: CTPLab2026
+  HSM_PIN: UserPwd1234!X
+  HYBRID_ROOT_PROFILE: ${HYBRID_ROOT_PROFILE:-hybrid/catalyst/root-ca}
+  TLS_CLIENT_PROFILE: ${TLS_CLIENT_PROFILE:-hybrid/catalyst/tls-client}
+  CLASSICAL_CSR_CURVE: ${CLASSICAL_CSR_CURVE:-prime256v1}
+
+x-dep-hsm: &dep-hsm
+  ctp-hsm-init:
+    condition: service_completed_successfully
+
+services:
+  # ==========================================================================
+  # INFRASTRUCTURE
+  # ==========================================================================
+  ctp-sim:
+    build:
+      context: .
+      dockerfile: hsm/sim/Dockerfile
+    container_name: ctp-sim
+    ports:
+      - "3001:3001"
+    networks:
+      - net-lab
+    restart: unless-stopped
+    profiles: [baseline, full]
+
+  ctp-hsm-init:
+    build:
+      context: .
+      dockerfile: hsm/init/Dockerfile
+    container_name: ctp-hsm-init
+    networks:
+      - net-lab
+    depends_on:
+      ctp-sim:
+        condition: service_started
+    restart: "no"
+    profiles: [baseline, full]
+
+  # ==========================================================================
+  # ENTITY NODES (root CAs)
+  # CTP_MODE=proxy -> wait for proxy CSR, cross-sign
+  # CTP_MODE=direct -> ready for direct issuance (baseline)
+  # ==========================================================================
+  ctp-entity-classical:
+    build:
+      context: .
+      dockerfile: entities/classical/Dockerfile
+    container_name: ctp-entity-classical
+    networks:
+      - net-lab
+    volumes:
+      - vol-shared:/shared
+    environment:
+      <<: *entity-env
+      CTP_MODE: proxy
+    depends_on: *dep-hsm
+    profiles: [full]
+
+  ctp-entity-pqc:
+    build:
+      context: .
+      dockerfile: entities/pqc/Dockerfile
+    container_name: ctp-entity-pqc
+    networks:
+      - net-lab
+    volumes:
+      - vol-shared:/shared
+    environment:
+      <<: *entity-env
+      CTP_MODE: proxy
+    depends_on: *dep-hsm
+    profiles: [full]
+
+  # ==========================================================================
+  # BASELINE — same entities, direct mode (no proxy cross-sign)
+  # ==========================================================================
+  ctp-entity-classical-direct:
+    build:
+      context: .
+      dockerfile: entities/classical/Dockerfile
+    container_name: ctp-entity-classical-direct
+    networks:
+      - net-lab
+    volumes:
+      - vol-shared:/shared
+    environment:
+      <<: *entity-env
+      CTP_MODE: direct
+    depends_on: *dep-hsm
+    profiles: [baseline]
+
+  ctp-entity-pqc-direct:
+    build:
+      context: .
+      dockerfile: entities/pqc/Dockerfile
+    container_name: ctp-entity-pqc-direct
+    networks:
+      - net-lab
+    volumes:
+      - vol-shared:/shared
+    environment:
+      <<: *entity-env
+      CTP_MODE: direct
+    depends_on: *dep-hsm
+    profiles: [baseline]
+
+  # ==========================================================================
+  # HYBRID PROXIES
+  # ==========================================================================
+  ctp-classical-hp:
+    build:
+      context: .
+      dockerfile: entities/proxy/Dockerfile
+    container_name: ctp-classical-hp
+    networks:
+      - net-lab
+    volumes:
+      - vol-shared:/shared
+      - vol-certs:/certs
+    environment:
+      <<: *proxy-env
+      PROXY_NAME: classical-hp
+      CN_LABEL: Classical
+      CSR_ALGO: ecdsa-p256
+    depends_on:
+      ctp-entity-classical:
+        condition: service_started
+    profiles: [full]
+
+  ctp-pqc-hp:
+    build:
+      context: .
+      dockerfile: entities/proxy/Dockerfile
+    container_name: ctp-pqc-hp
+    networks:
+      - net-lab
+    volumes:
+      - vol-shared:/shared
+      - vol-certs:/certs
+    environment:
+      <<: *proxy-env
+      PROXY_NAME: pqc-hp
+      CN_LABEL: PQC
+      CSR_ALGO: ${PQC_CSR_ALGO:-ml-dsa-65}
+    depends_on:
+      ctp-entity-pqc:
+        condition: service_started
+    profiles: [full]

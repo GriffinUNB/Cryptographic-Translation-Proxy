@@ -1,0 +1,168 @@
+# =============================================================================
+# SLH-DSA Timestamping Certificate Profile (Hash-Based Post-Quantum)
+# =============================================================================
+#
+# Usage: RFC 3161 Timestamping Authority with conservative quantum resistance
+#
+# This certificate allows the TSA to:
+#   - Issue trusted timestamps with hash-based signatures
+#   - Provide maximum long-term security for archived timestamps
+#   - Use the most conservative post-quantum signature approach
+#
+# Standards: FIPS 205 (SLH-DSA/SPHINCS+), RFC 3161 (TSA), RFC 5280 (X.509)
+#
+# Security Level: NIST Level 5 (~256-bit equivalent)
+#   SLH-DSA-256s is the most secure SLH-DSA variant.
+#   "s" suffix means "small" variant (smaller signatures, slower signing).
+#
+# Quantum Safety: FULLY PROTECTED (Conservative)
+#   Hash-based signatures rely ONLY on hash function security.
+#   Ideal for long-term archival where conservatism is paramount.
+#
+# Why SLH-DSA for Timestamping:
+#   - Timestamps must remain valid for decades
+#   - Conservative security assumptions are crucial
+#   - Hash-based security is well-understood and trusted
+#   - Larger signature sizes acceptable for timestamp tokens
+#   - "s" variant minimizes token size while maximizing security
+#
+# Key/Signature Sizes:
+#   - Public key: ~64 bytes
+#   - Signature: ~29,792 bytes (256s variant)
+#
+# Validity: 5 years (1825 days)
+#   Longer than typical TSA certs due to conservative security.
+#
+# Important: Timestamping certificates MUST have:
+#   - extKeyUsage: timeStamping ONLY (no other EKUs)
+#   - extKeyUsage: CRITICAL (per RFC 3161 Section 2.3)
+#
+# Compatibility Warning:
+#   Pure SLH-DSA timestamps require PQC-capable verification tools.
+#   For backward compatibility, use ec/timestamping instead.
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile slh/timestamping \
+#       --var cn="ACME Archive TSA"
+#
+#   # Using --var-file
+#   pki credential enroll --profile slh/timestamping --var-file tsa-vars.yaml
+#
+# Expected DN: CN=ACME Archive TSA, OU=PKI Services, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: slh/timestamping
+description: "Timestamping certificate SLH-DSA-256s (hash-based, long-term archive)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - TSA service name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# SLH-DSA-256s (FIPS 205) - NIST Level 5
+#   - ~256-bit equivalent security (maximum)
+#   - "s" = small variant (smaller signatures, slower signing)
+#   - Ideal for archival use where security > performance
+#   - Public key: ~64 bytes, Signature: ~29,792 bytes
+#
+algorithm: slh-dsa-sha2-256s
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 5 years (1825 days) for archival TSA certificates.
+# Longer validity justified by conservative security assumptions.
+#
+validity: 1825d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "PKI Services"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # digitalSignature: Required for signing timestamp tokens
+  #
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  # timeStamping: RFC 3161 timestamping
+  # CRITICAL: RFC 3161 Section 2.3 requires this to be critical
+  # EXCLUSIVE: No other EKUs allowed per RFC 3161
+  #
+  extKeyUsage:
+    critical: true            # MUST be critical per RFC 3161
+    values:
+      - timeStamping          # ONLY timeStamping allowed
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.5.3"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca-slh.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca-slh.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# SLH-DSA signatures are intrinsic to the algorithm (no override needed)

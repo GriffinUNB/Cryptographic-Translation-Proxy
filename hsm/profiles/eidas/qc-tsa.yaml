@@ -1,0 +1,161 @@
+# =============================================================================
+# eIDAS Qualified Timestamping Authority (TSA) Certificate Profile
+# =============================================================================
+#
+# Usage: Qualified certificate for timestamping authority
+#
+# This certificate allows the TSA to:
+#   - Issue qualified timestamps (proof of existence at a point in time)
+#   - Extend validity of qualified signatures beyond certificate expiration
+#   - Provide non-repudiation evidence for legal/compliance purposes
+#
+# Standards: eIDAS Regulation (EU 910/2014), ETSI EN 319 412-5, RFC 3161
+#
+# QCStatements included:
+#   - QcCompliance (0.4.0.1862.1.1): EU qualified certificate
+#   - QcPDS (0.4.0.1862.1.5): PKI Disclosure Statements location
+#
+# Note: QcType is not specified as TSA is not esign/eseal/web.
+#       QcSSCD may be set if TSA uses a QSCD.
+#
+# Security Level: ~128-bit (ECDSA P-256)
+#
+# Quantum Safety: VULNERABLE
+#   ECDSA is vulnerable to Cryptographically Relevant Quantum Computers (CRQC).
+#   For quantum-resistant timestamping, use ml/timestamping profile.
+#
+# Important: Timestamping certificates MUST have:
+#   - extKeyUsage: timeStamping ONLY (no other EKUs)
+#   - extKeyUsage: CRITICAL (per RFC 3161 Section 2.3)
+#
+# Examples:
+#
+#   # Create qualified TSA certificate
+#   pki credential enroll --profile eidas/qc-tsa \
+#       --var cn="ACME Qualified TSA" \
+#       --var organization="ACME Corporation" \
+#       --var country="FR" \
+#       --var pds_url="https://pki.example.com/pds-en.pdf" \
+#       --var pds_lang="en"
+#
+# Expected DN: CN=ACME Qualified TSA, O=ACME Corporation, C=FR
+#
+# =============================================================================
+
+name: eidas/qc-tsa
+description: "eIDAS Qualified Timestamping Authority Certificate"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - TSA service name"
+
+  organization:
+    type: string
+    required: true
+    description: "Organization operating the TSA"
+
+  country:
+    type: string
+    required: true
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# ECDSA P-256 for fast timestamp token signing.
+# TSAs may issue many tokens per second; performance matters.
+#
+algorithm: ecdsa-p256
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 3 years (1095 days) for qualified TSA certificates.
+# Longer validity as TSA infrastructure changes are disruptive.
+#
+validity: 1095d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "PKI Services"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # digitalSignature: Required for signing timestamp tokens
+  # nonRepudiation:   For audit trail integrity
+  #
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+      - nonRepudiation
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  # timeStamping (OID 1.3.6.1.5.5.7.3.8): RFC 3161 timestamping
+  # CRITICAL: RFC 3161 Section 2.3 requires this to be critical
+  # EXCLUSIVE: No other EKUs allowed per RFC 3161
+  #
+  extKeyUsage:
+    critical: true
+    values:
+      - timeStamping
+
+  # QCStatements (ETSI EN 319 412-5)
+  # ---------------------------------------------------------------------------
+  # Qualifies this as an eIDAS compliant TSA certificate.
+  # NOTE: Customize qcPDS URLs for your organization before use.
+  #
+  qcStatements:
+    critical: false
+    qcCompliance: true            # EU qualified certificate
+    qcPDS:                        # CUSTOMIZE: Update with your PDS URLs
+      - url: "https://pki.example.com/pds-en.pdf"
+        language: "en"
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "0.4.0.2042.1.3"     # ETSI policy OID for qualified TSA
+        cps: "https://pki.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.example.com/qca.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.example.com/certs/qca.crt"
+    ocsp:
+      - "http://ocsp.example.com"

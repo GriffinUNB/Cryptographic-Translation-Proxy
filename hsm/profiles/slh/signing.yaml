@@ -1,0 +1,150 @@
+# =============================================================================
+# SLH-DSA Document Signing Certificate Profile (Hash-Based Post-Quantum)
+# =============================================================================
+#
+# Usage: Certificate for signing documents, PDFs, and general data
+#
+# This certificate allows the holder to:
+#   - Sign documents with hash-based post-quantum signatures
+#   - Sign data and messages with conservative quantum resistance
+#   - Provide non-repudiation for signed content
+#   - Maximum long-term security for archived signatures
+#
+# Note: For code signing, use a dedicated code-signing profile.
+#
+# Standards: FIPS 205 (SLH-DSA/SPHINCS+), RFC 5280 (X.509), CMS (RFC 5652)
+#
+# Security Level: NIST Level 5 (~256-bit equivalent)
+#   SLH-DSA-256s is the most secure SLH-DSA variant.
+#   "s" suffix means "small" variant (smaller signatures, slower signing).
+#
+# Quantum Safety: FULLY PROTECTED (Conservative)
+#   Hash-based signatures rely ONLY on hash function security.
+#   Ideal for long-term archival where conservatism is paramount.
+#
+# Key/Signature Sizes:
+#   - Public key: ~64 bytes
+#   - Signature: ~29,792 bytes (256s variant)
+#
+# Compatibility Warning:
+#   Pure SLH-DSA certificates require PQC-capable verification software.
+#   For backward compatibility, use hybrid/catalyst/signing instead.
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile slh/signing \
+#       --var cn="Alice Smith"
+#
+#   # Using --var-file
+#   pki credential enroll --profile slh/signing --var-file signing-vars.yaml
+#
+# Expected DN: CN=Alice Smith, OU=Users, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: slh/signing
+description: "Document signing certificate SLH-DSA-256s (hash-based, long-term archive)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - Signer identity name"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# SLH-DSA-256s (FIPS 205) - NIST Level 5
+#   - ~256-bit equivalent security (maximum)
+#   - "s" = small variant (smaller signatures, slower signing)
+#   - Ideal for archival use where security > performance
+#   - Public key: ~64 bytes, Signature: ~29,792 bytes
+#
+algorithm: slh-dsa-sha2-256s
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+validity: 365d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "Users"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # digitalSignature: Sign content
+  # nonRepudiation:   Provide proof of origin
+  #
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+      - nonRepudiation
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  # No EKU - general purpose signing certificate.
+  #
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.5.5"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca-slh.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca-slh.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# SLH-DSA signatures are intrinsic to the algorithm (no override needed)

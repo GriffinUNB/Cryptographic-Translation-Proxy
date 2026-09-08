@@ -1,0 +1,180 @@
+# =============================================================================
+# SLH-DSA TLS Server Certificate Profile (Hash-Based Post-Quantum)
+# =============================================================================
+#
+# Usage: TLS server authentication with hash-based quantum resistance
+#
+# This certificate allows a server to:
+#   - Authenticate using conservative post-quantum signatures (SLH-DSA)
+#   - Prove identity to PQC-capable TLS clients
+#   - Resist quantum computer attacks with hash-based security
+#
+# Standards: FIPS 205 (SLH-DSA/SPHINCS+), RFC 5280 (X.509), RFC 8446 (TLS 1.3)
+#
+# Security Level: NIST Level 1 (~128-bit equivalent)
+#   SLH-DSA-128f is the most efficient SLH-DSA variant.
+#   Suitable for end-entity certificates with shorter lifespans.
+#
+# Quantum Safety: FULLY PROTECTED (Conservative)
+#   Hash-based signatures rely ONLY on hash function security.
+#   Most conservative post-quantum approach.
+#
+# Why SLH-DSA for TLS:
+#   - Conservative security assumptions (only hash functions)
+#   - Well-understood cryptographic foundations
+#   - No structured mathematical problems to potentially break
+#   - Larger signatures acceptable in some scenarios
+#
+# Performance Trade-off:
+#   - Signature size: ~17,088 bytes (much larger than ECDSA)
+#   - Signing: slower than ML-DSA
+#   - Verification: fast
+#   - For high-performance needs, consider ML-DSA instead
+#
+# Compatibility Warning:
+#   Pure SLH-DSA certificates require PQC-capable TLS implementations.
+#   Not compatible with standard browsers/clients yet.
+#   For backward compatibility, use hybrid/catalyst/tls-server instead.
+#
+# Examples:
+#
+#   # Using --var
+#   pki credential enroll --profile slh/tls-server \
+#       --var cn="archive.acme.example.com" \
+#       --var dns_names="archive.acme.example.com,backup.acme.example.com"
+#
+#   # Using --var-file
+#   pki credential enroll --profile slh/tls-server --var-file server-vars.yaml
+#
+# Expected DN: CN=archive.acme.example.com, OU=Servers, O=ACME Corp, C=US
+#
+# =============================================================================
+
+name: slh/tls-server
+description: "TLS server SLH-DSA-128f (hash-based, conservative PQC)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: dns_name
+    required: true
+    wildcard:
+      allowed: true
+    description: "Common Name - Server's primary FQDN (wildcards allowed)"
+
+  dns_names:
+    type: dns_names
+    required: false
+    default: []
+    wildcard:
+      allowed: true
+    description: "DNS Subject Alternative Names (wildcards allowed)"
+
+  ip_addresses:
+    type: ip_list
+    required: false
+    default: []
+    description: "IP Address Subject Alternative Names"
+
+  organization:
+    type: string
+    required: false
+    default: "ACME Corp"
+    description: "Organization name"
+
+  country:
+    type: string
+    required: false
+    default: "US"
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# SLH-DSA-128f (FIPS 205) - NIST Level 1
+#   - ~128-bit equivalent security
+#   - "f" = fast variant
+#   - Public key: ~32 bytes, Signature: ~17,088 bytes
+#
+algorithm: slh-dsa-sha2-128f
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+validity: 365d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  ou: "Servers"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # digitalSignature: SLH-DSA signs TLS handshake
+  #
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  extKeyUsage:
+    critical: false
+    values:
+      - serverAuth
+
+  # Subject Alternative Name (RFC 5280 Section 4.2.1.6)
+  # ---------------------------------------------------------------------------
+  subjectAltName:
+    critical: false
+    dns: "{{ dns_names }}"
+    ip: "{{ ip_addresses }}"
+    dns_include_cn: true
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "1.3.6.1.4.1.99999.1.2.3"
+        cps: "https://pki.acme.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.acme.example.com/issuing-ca-slh.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.acme.example.com/certs/issuing-ca-slh.crt"
+    ocsp:
+      - "http://ocsp.acme.example.com"
+
+# -----------------------------------------------------------------------------
+# Signature Algorithm (how this certificate is signed)
+# -----------------------------------------------------------------------------
+# SLH-DSA signatures are intrinsic to the algorithm (no override needed)

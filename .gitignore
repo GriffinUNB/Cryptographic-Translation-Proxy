@@ -1,0 +1,13 @@
+QuantumProtect-1.5.0.0-Evaluation.zip
+u.trust-GP-HSM-Simulator_v6.5.0.0.zip
+
+# Utimaco-derived binaries + sim files — rebuild via ./extract.sh (vendor zips, not committed)
+hsm/csadm
+hsm/cxitool
+hsm/p11tool2
+hsm/libcs_pkcs11_R3.so
+hsm/libcxi.so
+hsm/keys/
+hsm/sim/bl_sim5
+hsm/sim/cs_sim.ini
+hsm/sim/devices/

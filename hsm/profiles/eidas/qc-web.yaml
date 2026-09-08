@@ -1,0 +1,181 @@
+# =============================================================================
+# eIDAS Qualified Website Authentication Certificate (QWAC) Profile
+# =============================================================================
+#
+# Usage: Qualified certificate for website authentication
+#
+# This certificate allows the website to:
+#   - Authenticate as a qualified eIDAS entity
+#   - Establish TLS connections with qualified authentication
+#   - Display verified organization identity in browsers (EV-like)
+#
+# Standards: eIDAS Regulation (EU 910/2014), ETSI EN 319 412-5, CA/Browser Forum
+#
+# QCStatements included:
+#   - QcCompliance (0.4.0.1862.1.1): EU qualified certificate
+#   - QcType (0.4.0.1862.1.6.3): Web authentication (web)
+#   - QcPDS (0.4.0.1862.1.5): PKI Disclosure Statements location
+#
+# Note: QcSSCD is typically not used for QWAC as HSM requirements differ.
+#
+# Security Level: ~128-bit (ECDSA P-256)
+#
+# Quantum Safety: VULNERABLE
+#   ECDSA is vulnerable to Cryptographically Relevant Quantum Computers (CRQC).
+#   For quantum-resistant web authentication, use hybrid TLS profiles.
+#
+# Examples:
+#
+#   # Create QWAC certificate
+#   pki credential enroll --profile eidas/qc-web \
+#       --var cn="www.example.com" \
+#       --var organization="ACME Corporation" \
+#       --var organizationIdentifier="VATFR-12345678901" \
+#       --var country="FR" \
+#       --var dns="www.example.com,example.com,api.example.com" \
+#       --var pds_url="https://pki.example.com/pds-en.pdf" \
+#       --var pds_lang="en"
+#
+# Expected DN: CN=www.example.com, O=ACME Corporation, 2.5.4.97=VATFR-12345678901, C=FR
+#
+# =============================================================================
+
+name: eidas/qc-web
+description: "eIDAS Qualified Website Authentication Certificate (QWAC)"
+
+# -----------------------------------------------------------------------------
+# Declarative Variables
+# -----------------------------------------------------------------------------
+variables:
+  cn:
+    type: string
+    required: true
+    description: "Common Name - Primary domain name"
+
+  organization:
+    type: string
+    required: true
+    description: "Organization legal name"
+
+  organizationIdentifier:
+    type: string
+    required: true
+    description: "Organization identifier (e.g., VATFR-12345678901, NTRGB-12345678)"
+
+  country:
+    type: string
+    required: true
+    pattern: "^[A-Z]{2}$"
+    minLength: 2
+    maxLength: 2
+    description: "ISO 3166-1 alpha-2 country code"
+
+  dns:
+    type: string
+    required: true
+    description: "Comma-separated list of DNS names for Subject Alternative Name"
+
+
+# -----------------------------------------------------------------------------
+# Algorithm
+# -----------------------------------------------------------------------------
+# ECDSA P-256 for QWAC.
+# Good balance of security and TLS handshake performance.
+#
+algorithm: ecdsa-p256
+
+# -----------------------------------------------------------------------------
+# Validity
+# -----------------------------------------------------------------------------
+# 1 year (398 days) for QWAC certificates.
+# CA/Browser Forum limits maximum validity.
+#
+validity: 398d
+
+# -----------------------------------------------------------------------------
+# Subject DN (Distinguished Name)
+# -----------------------------------------------------------------------------
+# QWAC requires organization validation and organizationIdentifier.
+#
+subject:
+  cn: "{{ cn }}"
+  o: "{{ organization }}"
+  organizationIdentifier: "{{ organizationIdentifier }}"
+  c: "{{ country }}"
+
+# -----------------------------------------------------------------------------
+# X.509 Extensions
+# -----------------------------------------------------------------------------
+extensions:
+
+  # Basic Constraints (RFC 5280 Section 4.2.1.9)
+  # ---------------------------------------------------------------------------
+  basicConstraints:
+    critical: true
+    ca: false
+
+  # Key Usage (RFC 5280 Section 4.2.1.3)
+  # ---------------------------------------------------------------------------
+  # digitalSignature: Required for ECDHE key exchange
+  # keyAgreement:     For ECDH-based key agreement (optional)
+  #
+  keyUsage:
+    critical: true
+    values:
+      - digitalSignature
+      - keyAgreement
+
+  # Extended Key Usage (RFC 5280 Section 4.2.1.12)
+  # ---------------------------------------------------------------------------
+  # serverAuth: TLS server authentication
+  # clientAuth: Mutual TLS authentication (optional for QWAC)
+  #
+  extKeyUsage:
+    critical: false
+    values:
+      - serverAuth
+      - clientAuth
+
+  # Subject Alternative Name (RFC 5280 Section 4.2.1.6)
+  # ---------------------------------------------------------------------------
+  # DNS names must be validated by the CA.
+  #
+  subjectAltName:
+    critical: false
+    dns:
+      - "{{ dns }}"
+
+  # QCStatements (ETSI EN 319 412-5)
+  # ---------------------------------------------------------------------------
+  # Qualifies this as an eIDAS compliant web authentication certificate.
+  # NOTE: Customize qcPDS URLs for your organization before use.
+  #
+  qcStatements:
+    critical: false
+    qcCompliance: true            # EU qualified certificate
+    qcType: web                   # Web authentication (QWAC)
+    qcPDS:                        # CUSTOMIZE: Update with your PDS URLs
+      - url: "https://pki.example.com/pds-en.pdf"
+        language: "en"
+
+  # Certificate Policies (RFC 5280 Section 4.2.1.4)
+  # ---------------------------------------------------------------------------
+  certificatePolicies:
+    critical: false
+    policies:
+      - oid: "0.4.0.2042.1.4"     # ETSI QCP-w policy OID
+        cps: "https://pki.example.com/cps"
+
+  # CRL Distribution Points (RFC 5280 Section 4.2.1.13)
+  # ---------------------------------------------------------------------------
+  crlDistributionPoints:
+    urls:
+      - "http://crl.example.com/qca.crl"
+
+  # Authority Information Access (RFC 5280 Section 4.2.2.1)
+  # ---------------------------------------------------------------------------
+  authorityInfoAccess:
+    caIssuers:
+      - "http://pki.example.com/certs/qca.crt"
+    ocsp:
+      - "http://ocsp.example.com"
