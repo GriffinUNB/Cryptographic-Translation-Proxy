@@ -1,0 +1,84 @@
+# C-CA signer, C-CA verifier
+$ QPKI_VERIFY_FORCE=classical qpki cert verify credentials/c-ca/c-client.crt --ca credentials/c-ca/c-ca.crt
+✓ Certificate is VALID
+  Subject:    client.c
+  Issuer:     Root CA
+  Serial:     02
+  Valid:      2026-10-26 to 2027-10-26
+  Revocation: Not checked (use --crl or --ocsp)
+
+# P-CA signer, C-CA verifier
+$ QPKI_VERIFY_FORCE=classical qpki cert verify credentials/p-ca/p-client.crt --ca credentials/p-ca/p-ca.crt
+✗ Certificate is INVALID SIGNATURE
+  Error:      x509: cannot verify signature: algorithm unimplemented
+  Subject:    client.p
+  Issuer:     Root CA
+  Serial:     02
+  Valid:      2026-10-26 to 2027-10-26
+  Revocation: Not checked (use --crl or --ocsp)
+certificate verification failed: INVALID SIGNATURE
+
+# CTP signer, C-CA verifier
+$ QPKI_VERIFY_FORCE=classical qpki cert verify credentials/ctp/ctp-client.crt --ca credentials/ctp/ctp-ca.crt
+✓ Certificate is VALID
+  Subject:    client.ctp
+  Issuer:     CTP (Hybrid)
+  Serial:     02
+  Valid:      2026-10-26 to 2027-10-26
+  Revocation: Not checked (use --crl or --ocsp)
+
+# C-CA signer, P-CA verifier
+$ QPKI_VERIFY_FORCE=pqc qpki cert verify credentials/c-ca/c-client.crt --ca credentials/c-ca/c-ca.crt
+✗ Certificate is INVALID SIGNATURE
+  Error:      unsupported signature algorithm OID: 1.2.840.10045.4.3.3
+  Subject:    client.c
+  Issuer:     Root CA
+  Serial:     02
+  Valid:      2026-10-26 to 2027-10-26
+  Revocation: Not checked (use --crl or --ocsp)
+certificate verification failed: INVALID SIGNATURE
+
+# P-CA signer, P-CA verifier
+$ QPKI_VERIFY_FORCE=pqc qpki cert verify credentials/p-ca/p-client.crt --ca credentials/p-ca/p-ca.crt
+✓ Certificate is VALID
+  Subject:    client.p
+  Issuer:     Root CA
+  Serial:     02
+  Valid:      2026-10-26 to 2027-10-26
+  Revocation: Not checked (use --crl or --ocsp)
+
+# CTP signer, P-CA verifier
+$ QPKI_VERIFY_FORCE=pqc qpki cert verify credentials/ctp/ctp-client.crt --ca credentials/ctp/ctp-ca.crt
+✓ Certificate is VALID
+  Subject:    client.ctp
+  Issuer:     CTP (Hybrid)
+  Serial:     02
+  Valid:      2026-10-26 to 2027-10-26
+  Revocation: Not checked (use --crl or --ocsp)
+
+# C-CA signer, CTP verifier
+$ qpki cert verify credentials/c-ca/c-client.crt --ca credentials/c-ca/c-ca.crt
+✓ Certificate is VALID
+  Subject:    client.c
+  Issuer:     Root CA
+  Serial:     02
+  Valid:      2026-10-26 to 2027-10-26
+  Revocation: Not checked (use --crl or --ocsp)
+
+# P-CA signer, CTP verifier
+$ qpki cert verify credentials/p-ca/p-client.crt --ca credentials/p-ca/p-ca.crt
+✓ Certificate is VALID
+  Subject:    client.p
+  Issuer:     Root CA
+  Serial:     02
+  Valid:      2026-10-26 to 2027-10-26
+  Revocation: Not checked (use --crl or --ocsp)
+
+# CTP signer, CTP verifier
+$ qpki cert verify credentials/ctp/ctp-client.crt --ca credentials/ctp/ctp-ca.crt
+✓ Certificate is VALID
+  Subject:    client.ctp
+  Issuer:     CTP (Hybrid)
+  Serial:     02
+  Valid:      2026-10-26 to 2027-10-26
+  Revocation: Not checked (use --crl or --ocsp)

@@ -1,0 +1,25 @@
+{
+  "subject": {
+    "common_name": "Root CA",
+    "organization": [
+      "ACME Corp"
+    ],
+    "country": [
+      "US"
+    ]
+  },
+  "created": "2026-10-26T15:32:07.882929516-03:00",
+  "active": "v1",
+  "versions": {
+    "v1": {
+      "profiles": [
+        "pqc"
+      ],
+      "algos": [
+        "ml-dsa-65"
+      ],
+      "created": "2026-10-26T15:32:07.882931072-03:00",
+      "activated_at": "2026-10-26T15:32:07.882931072-03:00"
+    }
+  }
+}

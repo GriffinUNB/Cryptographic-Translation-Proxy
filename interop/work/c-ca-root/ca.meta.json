@@ -1,0 +1,35 @@
+{
+  "subject": {
+    "common_name": "Root CA",
+    "organization": [
+      "ACME Corp"
+    ],
+    "country": [
+      "US"
+    ]
+  },
+  "created": "2026-10-26T15:32:07.855576025-03:00",
+  "active": "v1",
+  "versions": {
+    "v1": {
+      "profiles": [
+        ""
+      ],
+      "algos": [
+        "ecdsa-p384"
+      ],
+      "created": "2026-10-26T15:32:07.855576812-03:00",
+      "activated_at": "2026-10-26T15:32:07.855576812-03:00",
+      "keys": [
+        {
+          "id": "default",
+          "algorithm": "ecdsa-p384",
+          "storage": {
+            "type": "software",
+            "path": "versions/v1/keys/ca.ecdsa-p384.key"
+          }
+        }
+      ]
+    }
+  }
+}

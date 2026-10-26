@@ -133,6 +133,116 @@ The certificate sizes across meta-security levels for all certificate types, are
 | High | C-CTP Client | 297 B | 7,241 B | 3,652 B | **11,190 B** |
 | High | P-CTP Client | 297 B | 7,241 B | 3,627 B | **11,165 B** |
 
+## Interoperability Examples
+
+We demonstrate interoperability examples according to our cryptographic interoperability matrix, shown below and in Table II of our paper. Specifically, we modify QPKI source code to use classical or PQC only algorithms to simulate C-CA and P-CA, otherwise, QPKI nativity supports both domains for verification. We also modify verification output to show any resulting error message in detail. In C-CA verifier subsection, we observe that C-CA is able to verify certificates from the C-CA and CTP. However, C-CA fails to verify P-CA with "algorithm unimplemented" error message demonstrating its non-interoperability. In P-CA verifier subsection, we observe that P-CA is able to verify certificates from P-CA and CTP but fails to verify C-CA certificates with error message "unsupported signature algorithm", also demonstrating non-interoperability. Lastly, in CTP verifier subsection, we observe that CTP is able to verify all certificates from C-CA, P-CA, and CTP. Importantly, interoperability is explicitly proven when a CA, such as our CTP, is able to have its certificate verified as a signer by a CA, and also verify the certificate of a similarly cryptographically capable CA. e.g., evaluation of CTP signer to C-CA verifier and C-CA signer to CTP verifier are both valid. We include the script `run_interop.sh` to reproduce these interoperability results in `/interop`.
+
+
+<img src="figures/interoperability_matrix.png" width="500" height="250">
+
+### C-CA verifier
+
+C-CA verification output examples for C-CA, P-CA, and CTP signers corresponding to column one in Table II. Examples are given using QPKI CLI with `QPKI_VERIFY_FORCE` set to classical to model C-CA only infrastructure.
+
+<pre>
+# C-CA signer, C-CA verifier
+$ QPKI_VERIFY_FORCE=classical qpki cert verify credentials/c-ca/c-client.crt --ca credentials/c-ca/c-ca.crt
+<span style="color:green">✓ Certificate is VALID</span>
+  Subject:    client.c
+  Issuer:     Root CA
+  Serial:     02
+  Valid:      2026-10-26 to 2027-10-26
+  Revocation: Not checked (use --crl or --ocsp)
+
+# P-CA signer, C-CA verifier
+$ QPKI_VERIFY_FORCE=classical qpki cert verify credentials/p-ca/p-client.crt --ca credentials/p-ca/p-ca.crt
+<span style="color:red">✗ Certificate is INVALID SIGNATURE</span>
+  <span style="color:red">Error:      x509: cannot verify signature: algorithm unimplemented</span>
+  Subject:    client.p
+  Issuer:     Root CA
+  Serial:     02
+  Valid:      2026-10-26 to 2027-10-26
+  Revocation: Not checked (use --crl or --ocsp)
+certificate verification failed: INVALID SIGNATURE
+
+# CTP signer, C-CA verifier
+$ QPKI_VERIFY_FORCE=classical qpki cert verify credentials/ctp/ctp-client.crt --ca credentials/ctp/ctp-ca.crt
+<span style="color:green">✓ Certificate is VALID</span>
+  Subject:    client.ctp
+  Issuer:     CTP (Hybrid)
+  Serial:     02
+  Valid:      2026-10-26 to 2027-10-26
+  Revocation: Not checked (use --crl or --ocsp)
+</pre>
+
+### P-CA verifier
+
+P-CA verification output examples for C-CA, P-CA, and CTP signers corresponding to column two in Table II. Examples are given using QPKI CLI with `QPKI_VERIFY_FORCE` set to PQC to model P-CA only infrastructure.
+
+<pre>
+# C-CA signer, P-CA verifier
+$ QPKI_VERIFY_FORCE=pqc qpki cert verify credentials/c-ca/c-client.crt --ca credentials/c-ca/c-ca.crt
+<span style="color:red">✗ Certificate is INVALID SIGNATURE</span>
+  <span style="color:red">Error:      unsupported signature algorithm OID: 1.2.840.10045.4.3.3</span>
+  Subject:    client.c
+  Issuer:     Root CA
+  Serial:     02
+  Valid:      2026-10-26 to 2027-10-26
+  Revocation: Not checked (use --crl or --ocsp)
+certificate verification failed: INVALID SIGNATURE
+
+# P-CA signer, P-CA verifier
+$ QPKI_VERIFY_FORCE=pqc qpki cert verify credentials/p-ca/p-client.crt --ca credentials/p-ca/p-ca.crt
+<span style="color:green">✓ Certificate is VALID</span>
+  Subject:    client.p
+  Issuer:     Root CA
+  Serial:     02
+  Valid:      2026-10-26 to 2027-10-26
+  Revocation: Not checked (use --crl or --ocsp)
+
+# CTP signer, P-CA verifier
+$ QPKI_VERIFY_FORCE=pqc qpki cert verify credentials/ctp/ctp-client.crt --ca credentials/ctp/ctp-ca.crt
+<span style="color:green">✓ Certificate is VALID</span>
+  Subject:    client.ctp
+  Issuer:     CTP (Hybrid)
+  Serial:     02
+  Valid:      2026-10-26 to 2027-10-26
+  Revocation: Not checked (use --crl or --ocsp)
+</pre>
+
+### CTP verifier
+
+CTP verification output examples for C-CA, P-CA, and CTP signers corresponding to column three in Table II. Examples are given using QPKI CLI without `QPKI_VERIFY_FORCE`, i.e., default state to model dual CTP cryptographic capability.
+
+<pre>
+# C-CA signer, CTP verifier
+$ qpki cert verify credentials/c-ca/c-client.crt --ca credentials/c-ca/c-ca.crt
+<span style="color:green">✓ Certificate is VALID</span>
+  Subject:    client.c
+  Issuer:     Root CA
+  Serial:     02
+  Valid:      2026-10-26 to 2027-10-26
+  Revocation: Not checked (use --crl or --ocsp)
+
+# P-CA signer, CTP verifier
+$ qpki cert verify credentials/p-ca/p-client.crt --ca credentials/p-ca/p-ca.crt
+<span style="color:green">✓ Certificate is VALID</span>
+  Subject:    client.p
+  Issuer:     Root CA
+  Serial:     02
+  Valid:      2026-10-26 to 2027-10-26
+  Revocation: Not checked (use --crl or --ocsp)
+
+# CTP signer, CTP verifier
+$ qpki cert verify credentials/ctp/ctp-client.crt --ca credentials/ctp/ctp-ca.crt
+<span style="color:green">✓ Certificate is VALID</span>
+  Subject:    client.ctp
+  Issuer:     CTP (Hybrid)
+  Serial:     02
+  Valid:      2026-10-26 to 2027-10-26
+  Revocation: Not checked (use --crl or --ocsp)
+</pre>
+
 ## Code Organization
 
 ```
@@ -160,6 +270,10 @@ The certificate sizes across meta-security levels for all certificate types, are
 │   ├── utimaco-simulator.yaml # QPKI HSM config
 │   └── (+) generated by extract.sh: libcs_pkcs11_R3.so, libcxi.so, csadm, cxitool,
 │                  p11tool2, keys/, sim/bl_sim5, sim/cs_sim.ini, sim/devices/
+├── interop/                   # Self-contained interoperability demo (9-cell QPKI verification matrix)
+│   ├── run_interop.sh          # Generates C-CA / P-CA / CTP certs, runs the matrix
+│   ├── bin/qpki               # Patched qpki honoring QPKI_VERIFY_FORCE / QPKI_VERIFY_RAW
+│   └── .gitignore             # Ignore regenerated work/ (CA keys), profiles/, results/
 └── measure/                   # Benchmark collection + chart generation
     ├── charts.py              # Regenerate figures/ + tables/ from raw data
     ├── parse_cs_pkcs11_log.py # Parse cs_pkcs11_R3.log TRACE log -> per-call durations
@@ -193,3 +307,24 @@ docker compose --profile full down -v     # manual full teardown
 ```
 
 Each level change must be preceded by a full teardown (`down -v`) to clear the Utimaco simulator's persistent key store. Benchmark collection (`measure/collect_*.sh`) requires the instrumented `qpki_timed` binary deployed to each container, and `QPKI_DEBUG=1` set inside the containers (via `sh -c`, since `docker exec` does not forward host env).
+
+## Citation
+
+If you use or adapt our code you are expected to cite our paper:
+
+G. Higgins, V. Raee, V. Chouhan, R. Burko, M.  Alagheband, A. Chow, A. Ghorbani. "Bridging the PQ-PKI Migration Chasm via HSM-Based Cryptographic Translation Proxy" Consumer Communications & Networking Conference,  Jan 2027.
+
+```
+@inproceedings{Higgins_2027,
+   title={Bridging the PQ-PKI Migration Chasm via HSM-Based Cryptographic Translation Proxy},
+   url={TBD},
+   DOI={TBD},
+   booktitle={2027 IEEE Consumer Communications & Networking Conference (CCNC)},
+   publisher={IEEE},
+   author={Griffin Higgins and Vahid Maleki Raee and Vikas Chouhan and Robby Burko and Mahdi Alagheband and Aaron Chow and Ali Ghorbani},
+   year={2027},
+   month=January, 
+   pages={TBD}
+   keywords={Post-Quantum Migration, Hardware Security Module, Public Key Infrastructure},
+}
+```

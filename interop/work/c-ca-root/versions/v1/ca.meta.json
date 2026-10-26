@@ -1,0 +1,25 @@
+{
+  "subject": {
+    "common_name": "Root CA",
+    "organization": [
+      "ACME Corp"
+    ],
+    "country": [
+      "US"
+    ]
+  },
+  "created": "2026-10-26T15:32:07.85949179-03:00",
+  "active": "v1",
+  "versions": {
+    "v1": {
+      "profiles": [
+        ""
+      ],
+      "algos": [
+        "ecdsa-p384"
+      ],
+      "created": "2026-10-26T15:32:07.859493256-03:00",
+      "activated_at": "2026-10-26T15:32:07.859493256-03:00"
+    }
+  }
+}

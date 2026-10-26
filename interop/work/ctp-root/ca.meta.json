@@ -1,0 +1,44 @@
+{
+  "subject": {
+    "common_name": "CTP (Hybrid)",
+    "organization": [
+      "ACME Corp"
+    ],
+    "country": [
+      "US"
+    ]
+  },
+  "created": "2026-10-26T15:32:07.94620002-03:00",
+  "active": "v1",
+  "versions": {
+    "v1": {
+      "profiles": [
+        "catalyst"
+      ],
+      "algos": [
+        "ecdsa-p384",
+        "ml-dsa-65"
+      ],
+      "created": "2026-10-26T15:32:07.946200899-03:00",
+      "activated_at": "2026-10-26T15:32:07.946200899-03:00",
+      "keys": [
+        {
+          "id": "classical",
+          "algorithm": "ecdsa-p384",
+          "storage": {
+            "type": "software",
+            "path": "versions/v1/keys/ca.ecdsa-p384.key"
+          }
+        },
+        {
+          "id": "pqc",
+          "algorithm": "ml-dsa-65",
+          "storage": {
+            "type": "software",
+            "path": "versions/v1/keys/ca.ml-dsa-65.key"
+          }
+        }
+      ]
+    }
+  }
+}
